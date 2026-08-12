@@ -17,9 +17,15 @@ from sc_mv_dmer.features.mert_upstream import (
 )
 from sc_mv_dmer.foundation.capabilities import CapabilityRole, DependencyValidity
 from sc_mv_dmer.foundation.canonical import canonical_json, sha256_canonical
-from sc_mv_dmer.foundation.manifests import ImmutableRecord
+from pydantic import field_validator
+
+from sc_mv_dmer.foundation.manifests import FrozenDict, ImmutableRecord
 from sc_mv_dmer.foundation.preflight import PreflightObservation
-from sc_mv_dmer.foundation.stages import FROZEN_CONTRACT_BLOCKER
+from sc_mv_dmer.foundation.stages import (
+    FROZEN_CONTRACT_BLOCKER,
+    audit_stage_authority,
+    load_stage_authority_catalog,
+)
 
 
 class E1Readiness(str, Enum):
@@ -43,6 +49,7 @@ class E0MinimumQualificationBundle(ImmutableRecord):
     stages_catalog_sha256: str
     full_catalog_blocker: str
     full_catalog_blocker_deferred: bool
+    stage_authority_coverage: tuple[str, ...]
     probe_manifest_id: str
     probe_manifest_sha256: str
     dataset_id: str
@@ -62,9 +69,17 @@ class E0MinimumQualificationBundle(ImmutableRecord):
     e1_1_readiness: E1Readiness
     e1_1_blocked_roles: tuple[str, ...]
     e1_1_blocked_reasons: tuple[str, ...]
+    e1_1_prerequisite_validity: Mapping[str, str]
     formal_execution_ready: bool
     paper_eligible: bool
+    supersedes: str | None = None
+    correction_reason: str | None = None
     qualification_sha256: str
+
+    @field_validator("e1_1_prerequisite_validity", mode="after")
+    @classmethod
+    def _freeze_prerequisite_validity(cls, value: Mapping[str, str]) -> Mapping[str, str]:
+        return FrozenDict(value)
 
 
 def _repository_root() -> Path:
@@ -130,12 +145,25 @@ def qualify_e0_minimum_bootstrap(
     probe: DeamProbeManifest,
     mert_status: MertUpstreamStatus,
     e1_1_prerequisite_validity: Mapping[CapabilityRole | str, object],
+    *,
+    supersedes: str | None = None,
+    correction_reason: str | None = None,
 ) -> E0MinimumQualificationBundle:
     """Build E0 evidence only; this reads declared artifacts and never runs MERT."""
 
     _assert_probe_contract(probe)
     _assert_pinned_mert_identity(mert_status)
+    if (supersedes is None) != (correction_reason is None):
+        raise ValueError("qualification supersession requires both path and correction reason")
     root = _repository_root()
+    required_stage_ids = (
+        "E0_MINIMUM_BOOTSTRAP",
+        "E1_1_MERT_REAL_OUTPUT_FRAME_RATE_PRINT",
+    )
+    coverage = audit_stage_authority(
+        load_stage_authority_catalog(root / "configs" / "catalog" / "stages.yaml"),
+        required_stage_ids,
+    )
     external_reasons = _external_prerequisite_reasons(e1_1_prerequisite_validity)
     missing_local_roles = tuple(mert_status.missing_roles)
     blocked_reasons = external_reasons + tuple(
@@ -158,6 +186,7 @@ def qualify_e0_minimum_bootstrap(
         "stages_catalog_sha256": _file_sha256(root / "configs" / "catalog" / "stages.yaml"),
         "full_catalog_blocker": FROZEN_CONTRACT_BLOCKER,
         "full_catalog_blocker_deferred": True,
+        "stage_authority_coverage": coverage.covered_stage_ids,
         "probe_manifest_id": probe.sample_id,
         "probe_manifest_sha256": sha256_canonical(probe.model_dump(mode="json")),
         "dataset_id": probe.dataset_id,
@@ -177,8 +206,23 @@ def qualify_e0_minimum_bootstrap(
         "e1_1_readiness": readiness,
         "e1_1_blocked_roles": missing_local_roles,
         "e1_1_blocked_reasons": blocked_reasons,
+        "e1_1_prerequisite_validity": {
+            dependency if isinstance(dependency, str) else dependency.value: (
+                validity.value if isinstance(validity, DependencyValidity) else "NOT_VALID"
+            )
+            for dependency, validity in e1_1_prerequisite_validity.items()
+            if dependency
+            in {
+                "E0_MINIMUM_BOOTSTRAP",
+                CapabilityRole.MERT_UPSTREAM_IDENTITY,
+                CapabilityRole.MERT_PROBE_IDENTITY,
+                CapabilityRole.MERT_PROBE_REPRESENTATION,
+            }
+        },
         "formal_execution_ready": False,
         "paper_eligible": False,
+        "supersedes": supersedes,
+        "correction_reason": correction_reason,
     }
     return E0MinimumQualificationBundle(
         **payload,

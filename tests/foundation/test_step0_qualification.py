@@ -67,7 +67,7 @@ def valid_prerequisites() -> dict[CapabilityRole | str, DependencyValidity]:
     }
 
 
-def qualification(*, status: MertUpstreamStatus, prerequisites=None):
+def qualification(*, status: MertUpstreamStatus, prerequisites=None, supersedes: str | None = None):
     return qualify_e0_minimum_bootstrap(
         observe_preflight(
             REPOSITORY_ROOT,
@@ -78,6 +78,8 @@ def qualification(*, status: MertUpstreamStatus, prerequisites=None):
         probe(),
         status,
         valid_prerequisites() if prerequisites is None else prerequisites,
+        supersedes=supersedes,
+        correction_reason="MERT checksum registry correction" if supersedes else None,
     )
 
 
@@ -89,6 +91,18 @@ def test_missing_local_mert_bytes_complete_e0_but_block_e1_1_with_exact_roles() 
     assert bundle.e0_implementation_status == "COMPLETE"
     assert bundle.e1_1_readiness is E1Readiness.BLOCKED
     assert bundle.e1_1_blocked_roles == ("config", "processor", "weights")
+    assert bundle.stage_authority_coverage == (
+        "E0_MINIMUM_BOOTSTRAP",
+        "E1_1_MERT_REAL_OUTPUT_FRAME_RATE_PRINT",
+    )
+    assert bundle.e1_1_prerequisite_validity == {
+        "E0_MINIMUM_BOOTSTRAP": "VALID",
+        "MERT_UPSTREAM_IDENTITY": "VALID",
+        "MERT_PROBE_IDENTITY": "VALID",
+        "MERT_PROBE_REPRESENTATION": "VALID",
+    }
+    with pytest.raises(TypeError):
+        bundle.e1_1_prerequisite_validity["E0_MINIMUM_BOOTSTRAP"] = "NOT_VALID"
     assert bundle.formal_execution_ready is False
     assert bundle.paper_eligible is False
     assert bundle.full_catalog_blocker_deferred is True
@@ -137,6 +151,18 @@ def test_terminal_qualification_write_is_canonical_and_refuses_overwrite(tmp_pat
     assert stored["qualification_sha256"] == bundle.qualification_sha256
     with pytest.raises(QualificationWriteError, match="terminal qualification"):
         write_terminal_qualification(bundle, destination)
+
+
+def test_corrected_qualification_records_supersession_without_overwrite() -> None:
+    """Replacing a terminal evidence file instead of appending a successor loses history."""
+
+    bundle = qualification(
+        status=mert_status(verified=False),
+        supersedes="evidence/qualifications/step-0-minimum-bootstrap.json",
+    )
+
+    assert bundle.supersedes == "evidence/qualifications/step-0-minimum-bootstrap.json"
+    assert bundle.correction_reason == "MERT checksum registry correction"
 
 
 def test_qualification_does_not_import_or_execute_model_code() -> None:

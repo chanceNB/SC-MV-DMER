@@ -4,20 +4,24 @@
   "title": "E0MinimumQualificationBundle",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "implementation_git_commit", "observed_git_dirty", "semantic_config_hash", "resolved_config_hash", "probe_manifest_id", "mert_repository", "mert_revision", "e0_implementation_status", "e1_1_readiness", "formal_execution_ready", "paper_eligible", "qualification_sha256"],
+  "required": ["schema_version", "implementation_git_commit", "observed_git_dirty", "semantic_config_hash", "resolved_config_hash", "stage_authority_coverage", "probe_manifest_id", "mert_repository", "mert_revision", "e0_implementation_status", "e1_1_readiness", "e1_1_prerequisite_validity", "formal_execution_ready", "paper_eligible", "qualification_sha256"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "implementation_git_commit": {"type": "string", "minLength": 7},
     "observed_git_dirty": {"type": "boolean"},
     "semantic_config_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "resolved_config_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "stage_authority_coverage": {"type": "array", "items": {"type": "string"}},
     "probe_manifest_id": {"type": "string", "minLength": 1},
     "mert_repository": {"const": "m-a-p/MERT-v1-95M"},
     "mert_revision": {"const": "12af15fef9d0ac838c3f475bfbbf26d2060dd4f5"},
     "e0_implementation_status": {"const": "COMPLETE"},
     "e1_1_readiness": {"enum": ["READY", "BLOCKED"]},
+    "e1_1_prerequisite_validity": {"type": "object", "additionalProperties": {"enum": ["VALID", "NOT_VALID"]}},
     "formal_execution_ready": {"const": false},
     "paper_eligible": {"const": false},
+    "supersedes": {"type": ["string", "null"]},
+    "correction_reason": {"type": ["string", "null"]},
     "qualification_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }
