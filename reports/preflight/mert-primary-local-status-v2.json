@@ -1,0 +1,22 @@
+{
+  "checksum_mismatches": [],
+  "correction_reason": "checksum authentication added; prior same-name verification was unsafe",
+  "expected_checksums": {},
+  "license": "cc-by-nc-4.0",
+  "local_files": {},
+  "local_verification_status": "EXPECTED_CHECKSUMS_UNREGISTERED",
+  "missing_roles": [
+    "config",
+    "processor",
+    "weights"
+  ],
+  "repository": "m-a-p/MERT-v1-95M",
+  "required_roles": [
+    "config",
+    "processor",
+    "weights"
+  ],
+  "revision": "12af15fef9d0ac838c3f475bfbbf26d2060dd4f5",
+  "supersedes": "reports/preflight/mert-primary-local-status.json",
+  "upstream_identity": "56f68f045d93c2cfe92ca0f911a059b8c6907769a96e3fe0adfacdc178cb128e"
+}

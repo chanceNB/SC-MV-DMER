@@ -72,3 +72,19 @@ Implementation commit: `0560447659fa49879e6d980317c24e9b11f88745`
 `git diff --check` exited 0 before the focused commit. Task 5 staging used an
 explicit scoped path list and did not include concurrent Task 4 capability or
 stage changes.
+
+## Review fix round 1
+
+Same-name MERT fixture bytes now fail closed unless every required role has a
+registered expected SHA-256 and each actual hash matches. Missing expected
+hashes yield `EXPECTED_CHECKSUMS_UNREGISTERED`; mismatches yield
+`CHECKSUM_MISMATCH`; both block formal binding. The expected-checksum map is
+part of upstream identity. Only the authority-supplied weights LFS OID is
+registered; config and processor checksums remain intentionally unregistered.
+
+The historical status is preserved. New
+`reports/preflight/mert-primary-local-status-v2.json` supersedes it with the
+checksum-authentication correction reason and remains blocked. Probe and status
+writes now use exclusive creation, avoiding exists-then-write TOCTOU.
+
+Focused tests: 8 passed; full suite: 65 passed; `git diff --check` exited 0.

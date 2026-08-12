@@ -64,7 +64,6 @@ def build_probe(source: DeamSource) -> DeamProbeManifest:
 
 
 def write_probe_manifest(probe: DeamProbeManifest, destination: Path) -> None:
-    if destination.exists():
-        raise FileExistsError(f"terminal probe artifact already exists: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(probe.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    with destination.open("x", encoding="utf-8") as artifact:
+        artifact.write(probe.model_dump_json(indent=2) + "\n")

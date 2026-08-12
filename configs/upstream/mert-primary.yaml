@@ -5,3 +5,5 @@ required_roles:
   config: config.json
   processor: preprocessor_config.json
   weights: pytorch_model.bin
+expected_sha256:
+  weights: a2b8b747f72c06e0595aeae41ae5473f4364938c6b39b2c58be38c48e6bd3fcd
