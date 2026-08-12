@@ -34,6 +34,16 @@ def profile():
     return select_variant_profile(load_variant_catalog(VARIANTS_CATALOG), "E1_MERT_PROBE")
 
 
+def e1_1_validity() -> dict[CapabilityRole | str, DependencyValidity]:
+    return {
+        "E0_MINIMUM_BOOTSTRAP": DependencyValidity.VALID,
+        CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
+        CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
+        CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
+        CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.VALID,
+    }
+
+
 def test_e0_compilation_has_no_active_forward_training_or_gate_execution(profile) -> None:
     """Removing an E0 prohibition would incorrectly authorize execution."""
 
@@ -47,6 +57,7 @@ def test_e0_compilation_has_no_active_forward_training_or_gate_execution(profile
         dependency_validity={},
     )
 
+    assert manifest.role_capabilities[CapabilityRole.MERT_UPSTREAM_IDENTITY].activation is ActivationStatus.ACTIVE
     assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].activation is ActivationStatus.INACTIVE
     assert manifest.role_capabilities[CapabilityRole.MERT_OUTPUT_DIMENSION_DERIVATION].activation is ActivationStatus.INACTIVE
     assert manifest.role_capabilities[CapabilityRole.TIMESNET_PERIOD_DERIVATION].activation is ActivationStatus.INACTIVE
@@ -66,9 +77,10 @@ def test_e1_1_activates_only_real_forward_measurement_roles(profile) -> None:
             phase=Phase.MEASUREMENT,
             execution_role=ExecutionRole.INFERENCE,
         ),
-        dependency_validity={},
+        dependency_validity=e1_1_validity(),
     )
 
+    assert manifest.role_capabilities[CapabilityRole.MERT_UPSTREAM_IDENTITY].activation is ActivationStatus.ACTIVE
     assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_IDENTITY].activation is ActivationStatus.ACTIVE
     assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_REPRESENTATION].activation is ActivationStatus.ACTIVE
     assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].activation is ActivationStatus.ACTIVE
@@ -76,6 +88,69 @@ def test_e1_1_activates_only_real_forward_measurement_roles(profile) -> None:
     assert manifest.role_capabilities[CapabilityRole.MERT_OUTPUT_DIMENSION_DERIVATION].activation is ActivationStatus.INACTIVE
     assert manifest.role_capabilities[CapabilityRole.TIMESNET_PERIOD_DERIVATION].activation is ActivationStatus.INACTIVE
     assert manifest.role_capabilities[CapabilityRole.RG_01_EVALUATION].activation is ActivationStatus.INACTIVE
+
+
+@pytest.mark.parametrize(
+    "dependency_validity",
+    [
+        {},
+        {
+            "E0_MINIMUM_BOOTSTRAP": DependencyValidity.STALE_DEPENDENCY,
+            CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
+            CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
+            CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
+            CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.VALID,
+        },
+        {
+            "E0_MINIMUM_BOOTSTRAP": None,
+            CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
+            CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
+            CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
+            CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.VALID,
+        },
+    ],
+)
+def test_e1_1_requires_explicit_valid_predecessor_and_identity_validity(
+    profile, dependency_validity
+) -> None:
+    """Missing or non-VALID authority evidence must block the future measurement stage."""
+
+    manifest = compile_capabilities(
+        profile,
+        ExecutionContext(
+            stage_id="E1_1_MERT_REAL_OUTPUT_FRAME_RATE_PRINT",
+            phase=Phase.MEASUREMENT,
+            execution_role=ExecutionRole.INFERENCE,
+        ),
+        dependency_validity=dependency_validity,
+    )
+
+    assert manifest.role_capabilities[CapabilityRole.MERT_UPSTREAM_IDENTITY].readiness is Readiness.DEPENDENCY_BLOCKED
+    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_IDENTITY].readiness is Readiness.DEPENDENCY_BLOCKED
+    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_REPRESENTATION].readiness is Readiness.DEPENDENCY_BLOCKED
+    assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].readiness is Readiness.DEPENDENCY_BLOCKED
+
+
+def test_e1_1_real_forward_requires_explicit_valid_effective_validity(profile) -> None:
+    """A forward without its own effective-validity evidence cannot become ready."""
+
+    dependency_validity = e1_1_validity()
+    del dependency_validity[CapabilityRole.MERT_REAL_FORWARD]
+
+    manifest = compile_capabilities(
+        profile,
+        ExecutionContext(
+            stage_id="E1_1_MERT_REAL_OUTPUT_FRAME_RATE_PRINT",
+            phase=Phase.MEASUREMENT,
+            execution_role=ExecutionRole.INFERENCE,
+        ),
+        dependency_validity=dependency_validity,
+    )
+
+    assert manifest.role_capabilities[CapabilityRole.MERT_UPSTREAM_IDENTITY].readiness is Readiness.READY
+    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_IDENTITY].readiness is Readiness.READY
+    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_REPRESENTATION].readiness is Readiness.READY
+    assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].readiness is Readiness.DEPENDENCY_BLOCKED
 
 
 def test_late_modules_remain_not_applicable_in_every_registered_context(profile) -> None:
@@ -183,7 +258,10 @@ def test_stale_dependency_never_becomes_ready(profile) -> None:
             phase=Phase.MEASUREMENT,
             execution_role=ExecutionRole.INFERENCE,
         ),
-        dependency_validity={CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.STALE_DEPENDENCY},
+        dependency_validity={
+            **e1_1_validity(),
+            CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.STALE_DEPENDENCY,
+        },
     )
 
     assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].activation is ActivationStatus.ACTIVE

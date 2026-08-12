@@ -41,6 +41,7 @@ class DependencyValidity(str, Enum):
 
 
 class CapabilityRole(str, Enum):
+    MERT_UPSTREAM_IDENTITY = "MERT_UPSTREAM_IDENTITY"
     MERT_PROBE_IDENTITY = "MERT_PROBE_IDENTITY"
     MERT_PROBE_REPRESENTATION = "MERT_PROBE_REPRESENTATION"
     MERT_REAL_FORWARD = "MERT_REAL_FORWARD"
@@ -187,18 +188,19 @@ def _readiness_for(validity: DependencyValidity) -> Readiness:
     return Readiness(validity.value)
 
 
+def _is_explicitly_valid(validity: object) -> bool:
+    return validity is DependencyValidity.VALID
+
+
 def compile_capabilities(
     profile: VariantCapabilityProfile,
     context: ExecutionContext,
-    dependency_validity: Mapping[CapabilityRole, DependencyValidity],
+    dependency_validity: Mapping[CapabilityRole | str, object],
 ) -> CompiledExecutionCapabilityManifest:
     """Compile an immutable manifest from an exact profile and stage authority row."""
 
     from sc_mv_dmer.foundation.stages import load_stage_authority_catalog
 
-    unknown_dependencies = set(dependency_validity) - set(CapabilityRole)
-    if unknown_dependencies:
-        raise ValueError(f"unknown capability role: {sorted(map(str, unknown_dependencies))}")
     rows = load_stage_authority_catalog(_stage_catalog_path())
     row = next((candidate for candidate in rows if candidate.stage_id == context.stage_id), None)
     if row is None:
@@ -211,6 +213,10 @@ def compile_capabilities(
         raise UnknownCapabilityContextError(
             f"stage {context.stage_id} does not authorize variant {profile.variant_id}"
         )
+    allowed_dependency_keys = set(CapabilityRole) | set(row.required_predecessor_stage_ids)
+    unknown_dependencies = set(dependency_validity) - allowed_dependency_keys
+    if unknown_dependencies:
+        raise ValueError(f"unknown capability dependency: {sorted(map(str, unknown_dependencies))}")
     for role in context.requested_roles:
         if profile.role_map[role] is ScientificExistence.NOT_APPLICABLE_BY_DESIGN:
             raise NotApplicableRoleActivationError(
@@ -221,6 +227,14 @@ def compile_capabilities(
                 f"role {role.value} is not active in stage {context.stage_id}"
             )
 
+    authority_dependencies = (
+        *row.required_predecessor_stage_ids,
+        *row.required_identity_roles,
+    )
+    authority_is_valid = all(
+        _is_explicitly_valid(dependency_validity.get(dependency))
+        for dependency in authority_dependencies
+    )
     capabilities: dict[CapabilityRole, RoleExecutionCapability] = {}
     for role, existence in profile.role_map.items():
         if existence is ScientificExistence.NOT_APPLICABLE_BY_DESIGN:
@@ -229,10 +243,17 @@ def compile_capabilities(
                 activation=ActivationStatus.NOT_APPLICABLE,
             )
         elif role in row.active_roles:
+            validity = dependency_validity.get(role)
+            if not authority_is_valid or validity is None:
+                readiness = Readiness.DEPENDENCY_BLOCKED
+            elif isinstance(validity, DependencyValidity):
+                readiness = _readiness_for(validity)
+            else:
+                readiness = Readiness.DEPENDENCY_BLOCKED
             capabilities[role] = RoleExecutionCapability(
                 scientific_existence=existence,
                 activation=ActivationStatus.ACTIVE,
-                readiness=_readiness_for(dependency_validity.get(role, DependencyValidity.VALID)),
+                readiness=readiness,
             )
         else:
             capabilities[role] = RoleExecutionCapability(

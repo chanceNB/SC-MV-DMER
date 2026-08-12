@@ -9,6 +9,7 @@ stages:
     phase: BOOTSTRAP
     execution_role: INFERENCE
     active_roles:
+      - MERT_UPSTREAM_IDENTITY
       - MERT_PROBE_IDENTITY
       - MERT_PROBE_REPRESENTATION
     forbidden_roles:
@@ -33,6 +34,7 @@ stages:
     phase: MEASUREMENT
     execution_role: INFERENCE
     active_roles:
+      - MERT_UPSTREAM_IDENTITY
       - MERT_PROBE_IDENTITY
       - MERT_PROBE_REPRESENTATION
       - MERT_REAL_FORWARD
@@ -54,5 +56,6 @@ stages:
     required_predecessor_stage_ids:
       - E0_MINIMUM_BOOTSTRAP
     required_identity_roles:
+      - MERT_UPSTREAM_IDENTITY
       - MERT_PROBE_IDENTITY
       - MERT_PROBE_REPRESENTATION

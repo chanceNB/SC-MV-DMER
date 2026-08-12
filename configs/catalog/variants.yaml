@@ -7,6 +7,7 @@ profiles:
     variant_id: E1_MERT_PROBE
     variant_version: E1-v1
     role_map:
+      MERT_UPSTREAM_IDENTITY: PRESENT
       MERT_PROBE_IDENTITY: PRESENT
       MERT_PROBE_REPRESENTATION: PRESENT
       MERT_REAL_FORWARD: PRESENT
