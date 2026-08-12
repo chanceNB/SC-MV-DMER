@@ -243,13 +243,15 @@ def compile_capabilities(
                 activation=ActivationStatus.NOT_APPLICABLE,
             )
         elif role in row.active_roles:
-            validity = dependency_validity.get(role)
-            if not authority_is_valid or validity is None:
-                readiness = Readiness.DEPENDENCY_BLOCKED
-            elif isinstance(validity, DependencyValidity):
-                readiness = _readiness_for(validity)
-            else:
-                readiness = Readiness.DEPENDENCY_BLOCKED
+            role_dependencies_are_valid = all(
+                _is_explicitly_valid(dependency_validity.get(dependency))
+                for dependency in row.role_dependencies.get(role, ())
+            )
+            readiness = (
+                Readiness.READY
+                if authority_is_valid and role_dependencies_are_valid
+                else Readiness.DEPENDENCY_BLOCKED
+            )
             capabilities[role] = RoleExecutionCapability(
                 scientific_existence=existence,
                 activation=ActivationStatus.ACTIVE,

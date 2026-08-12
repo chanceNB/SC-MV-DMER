@@ -40,7 +40,6 @@ def e1_1_validity() -> dict[CapabilityRole | str, DependencyValidity]:
         CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
         CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
         CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
-        CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.VALID,
     }
 
 
@@ -91,51 +90,25 @@ def test_e1_1_activates_only_real_forward_measurement_roles(profile) -> None:
 
 
 @pytest.mark.parametrize(
-    "dependency_validity",
-    [
-        {},
-        {
-            "E0_MINIMUM_BOOTSTRAP": DependencyValidity.STALE_DEPENDENCY,
-            CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
-            CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
-            CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
-            CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.VALID,
-        },
-        {
-            "E0_MINIMUM_BOOTSTRAP": None,
-            CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
-            CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
-            CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
-            CapabilityRole.MERT_REAL_FORWARD: DependencyValidity.VALID,
-        },
-    ],
+    "external_dependency",
+    (
+        "E0_MINIMUM_BOOTSTRAP",
+        CapabilityRole.MERT_UPSTREAM_IDENTITY,
+        CapabilityRole.MERT_PROBE_IDENTITY,
+        CapabilityRole.MERT_PROBE_REPRESENTATION,
+    ),
 )
-def test_e1_1_requires_explicit_valid_predecessor_and_identity_validity(
-    profile, dependency_validity
+@pytest.mark.parametrize("mode", ("missing", "nonvalid"))
+def test_e1_1_real_forward_requires_every_external_authority_dependency(
+    profile, external_dependency, mode
 ) -> None:
-    """Missing or non-VALID authority evidence must block the future measurement stage."""
-
-    manifest = compile_capabilities(
-        profile,
-        ExecutionContext(
-            stage_id="E1_1_MERT_REAL_OUTPUT_FRAME_RATE_PRINT",
-            phase=Phase.MEASUREMENT,
-            execution_role=ExecutionRole.INFERENCE,
-        ),
-        dependency_validity=dependency_validity,
-    )
-
-    assert manifest.role_capabilities[CapabilityRole.MERT_UPSTREAM_IDENTITY].readiness is Readiness.DEPENDENCY_BLOCKED
-    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_IDENTITY].readiness is Readiness.DEPENDENCY_BLOCKED
-    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_REPRESENTATION].readiness is Readiness.DEPENDENCY_BLOCKED
-    assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].readiness is Readiness.DEPENDENCY_BLOCKED
-
-
-def test_e1_1_real_forward_requires_explicit_valid_effective_validity(profile) -> None:
-    """A forward without its own effective-validity evidence cannot become ready."""
+    """Any absent or non-VALID declared external prerequisite blocks first forward."""
 
     dependency_validity = e1_1_validity()
-    del dependency_validity[CapabilityRole.MERT_REAL_FORWARD]
+    if mode == "missing":
+        del dependency_validity[external_dependency]
+    else:
+        dependency_validity[external_dependency] = DependencyValidity.STALE_DEPENDENCY
 
     manifest = compile_capabilities(
         profile,
@@ -147,9 +120,6 @@ def test_e1_1_real_forward_requires_explicit_valid_effective_validity(profile) -
         dependency_validity=dependency_validity,
     )
 
-    assert manifest.role_capabilities[CapabilityRole.MERT_UPSTREAM_IDENTITY].readiness is Readiness.READY
-    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_IDENTITY].readiness is Readiness.READY
-    assert manifest.role_capabilities[CapabilityRole.MERT_PROBE_REPRESENTATION].readiness is Readiness.READY
     assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].readiness is Readiness.DEPENDENCY_BLOCKED
 
 
@@ -248,8 +218,8 @@ def test_unknown_variant_role_stage_and_phase_fail_closed(profile) -> None:
         )
 
 
-def test_stale_dependency_never_becomes_ready(profile) -> None:
-    """Mapping stale input validity to READY would permit an invalid measurement."""
+def test_e1_1_ignores_undeclared_self_validity_for_first_forward(profile) -> None:
+    """The first real forward cannot depend on its own output validity."""
 
     manifest = compile_capabilities(
         profile,
@@ -265,7 +235,7 @@ def test_stale_dependency_never_becomes_ready(profile) -> None:
     )
 
     assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].activation is ActivationStatus.ACTIVE
-    assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].readiness is Readiness.STALE_DEPENDENCY
+    assert manifest.role_capabilities[CapabilityRole.MERT_REAL_FORWARD].readiness is Readiness.READY
 
 
 def test_compiled_manifest_is_immutable(profile) -> None:

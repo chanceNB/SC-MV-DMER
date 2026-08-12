@@ -14,6 +14,11 @@
     "active_roles": {"type": "array", "items": {"type": "string"}},
     "forbidden_roles": {"type": "array", "items": {"type": "string"}},
     "required_predecessor_stage_ids": {"type": "array", "items": {"type": "string"}},
-    "required_identity_roles": {"type": "array", "items": {"type": "string"}}
+    "required_identity_roles": {"type": "array", "items": {"type": "string"}},
+    "role_dependencies": {
+      "type": "object",
+      "propertyNames": {"type": "string"},
+      "additionalProperties": {"type": "array", "items": {"type": "string"}}
+    }
   }
 }

@@ -38,4 +38,11 @@ Commit message: `feat: compile E1 minimum capabilities`.
 - GREEN: `./.venv/Scripts/python.exe -m pytest tests/foundation/test_capability_compiler.py tests/foundation/test_stage_authority.py -q` exited 0 with `15 passed in 0.27s`.
 - Fresh final suite: `./.venv/Scripts/python.exe -m pytest -q` exited 0 with `53 passed in 0.29s`.
 - `MERT_UPSTREAM_IDENTITY` is now an active E0/E1.1 identity role and an E1.1 required identity input.
-- E1.1 readiness is fail-closed: E0 predecessor, all three identity inputs, and each active role's own effective-validity input must be explicit `DependencyValidity.VALID`; missing, `None`, or non-VALID authority inputs produce `DEPENDENCY_BLOCKED`.
+- E1.1 readiness is fail-closed: the E0 predecessor and all three identity inputs must be explicit `DependencyValidity.VALID`; missing, `None`, or non-VALID authority inputs produce `DEPENDENCY_BLOCKED`.
+
+## Review fix round 2
+
+- RED: `./.venv/Scripts/python.exe -m pytest tests/foundation/test_capability_compiler.py -q` exited 1 with `MERT_REAL_FORWARD` incorrectly `DEPENDENCY_BLOCKED` when all four external authority prerequisites were VALID, and incorrectly `STALE_DEPENDENCY` when only its undeclared self-validity was stale.
+- GREEN: `./.venv/Scripts/python.exe -m pytest tests/foundation/test_capability_compiler.py tests/foundation/test_stage_authority.py -q` exited 0 with `19 passed in 0.31s`.
+- Fresh final suite: `./.venv/Scripts/python.exe -m pytest -q` exited 0 with `64 passed in 0.37s`.
+- `MERT_REAL_FORWARD` now derives readiness from exactly the E0 predecessor plus upstream/probe/probe-representation identities; it has no implicit self dependency. The authority model supports only explicitly declared role-specific dependencies for other active roles.

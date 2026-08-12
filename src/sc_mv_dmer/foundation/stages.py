@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from sc_mv_dmer.foundation.capabilities import CapabilityRole, ExecutionRole, Phase
-from sc_mv_dmer.foundation.manifests import ImmutableRecord
+from sc_mv_dmer.foundation.manifests import FrozenDict, ImmutableRecord
 
 
 FROZEN_CONTRACT_BLOCKER = "IMPLEMENTATION_BLOCKED_BY_FROZEN_CONTRACT: SGA-M0M20-EV-3R+"
@@ -30,6 +30,16 @@ class StageAuthorityRow(ImmutableRecord):
     forbidden_roles: tuple[CapabilityRole, ...]
     required_predecessor_stage_ids: tuple[str, ...] = ()
     required_identity_roles: tuple[CapabilityRole, ...] = ()
+    role_dependencies: Mapping[CapabilityRole, tuple[CapabilityRole, ...]] = Field(
+        default_factory=dict
+    )
+
+    @field_validator("role_dependencies", mode="after")
+    @classmethod
+    def _freeze_role_dependencies(
+        cls, value: Mapping[CapabilityRole, tuple[CapabilityRole, ...]]
+    ) -> Mapping[CapabilityRole, tuple[CapabilityRole, ...]]:
+        return FrozenDict({role: tuple(dependencies) for role, dependencies in value.items()})
 
     def model_post_init(self, __context: Any) -> None:
         if len(set(self.active_roles)) != len(self.active_roles):
@@ -38,6 +48,11 @@ class StageAuthorityRow(ImmutableRecord):
             raise ValueError("forbidden roles must not contain duplicates")
         if set(self.active_roles) & set(self.forbidden_roles):
             raise ValueError("a role cannot be both active and forbidden")
+        for role, dependencies in self.role_dependencies.items():
+            if role not in self.active_roles:
+                raise ValueError("role dependencies require an active role")
+            if role in dependencies:
+                raise ValueError("role dependencies must not contain self dependencies")
 
 
 class StageAuthorityCoverage(ImmutableRecord):
