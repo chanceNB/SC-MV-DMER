@@ -46,6 +46,37 @@ exit 0
 
 Each of the four schemas also parsed through `python -m json.tool`.
 
+## Fix round 1/5
+
+Each reviewer finding was addressed test-first under the task-local Python
+3.10.11 environment:
+
+- Run mode RED: a `RunSpec` test failed because the raw string had no
+  `RunMode` value. GREEN reuses `config.RunMode` and makes the schema enum
+  exactly `formal` / `debug`.
+- Manual-authority RED: new typed-metadata tests could not import the absent
+  models. GREEN adds discriminated automatic/manual metadata. Manual `PASS`
+  rejects pending/missing approval, and approved manual authority requires a
+  non-Codex/non-automatic reviewer identity plus immutable approval-artifact
+  SHA-256. `PENDING` remains allowed without approval.
+- Lifecycle-store RED: the new explicit-store test could not import
+  `LifecycleStore`. GREEN rejects repeated `run_id` registration both while
+  active and after terminal sealing, preventing two valid handles from being
+  finalized independently.
+- Multi-predecessor RED: the result reported only `source-a` when two direct
+  predecessors were invalidated. GREEN aggregates every invalidated source and
+  every dependency path in `dependency_paths`.
+
+Verification after the fixes:
+
+```text
+.venv\\Scripts\\python.exe -m pytest tests\\foundation\\test_run_lifecycle.py tests\\foundation\\test_effective_validity.py -q
+20 passed in 0.22s
+
+.venv\\Scripts\\python.exe -m pytest -q
+37 passed in 0.25s
+```
+
 ## Files
 
 - `src/sc_mv_dmer/foundation/manifests.py`
@@ -72,7 +103,10 @@ Each of the four schemas also parsed through `python -m json.tool`.
 - Nested mapping/list aliases are copied into immutable values; the records
   remain JSON serializable.
 - Gate verdicts and manual/PENDING human-criterion metadata are historical
-  data only; no code assigns approval.
+  data only; no code assigns approval. Manual PASS is fail-closed until typed
+  reviewer identity and immutable approval-artifact checksum are supplied.
+- Run identity ownership is explicit through `LifecycleStore`; attempts to
+  start an already active or terminal ID fail before another handle exists.
 - Registry mutation is append-only. Direct invalidation/supersession marks the
   source invalid while descendants become stale without rewriting their stored
   records; unaffected branches stay valid.

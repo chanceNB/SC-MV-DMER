@@ -7,7 +7,7 @@
   "required": ["run_id", "run_mode", "semantic_config_hash", "resolved_config_hash", "config_snapshot_ref", "config_provenance_ref", "git_commit", "git_dirty", "data_ref", "split_ref", "seed", "environment", "launch_command", "schema_versions"],
   "properties": {
     "run_id": {"type": "string", "minLength": 1},
-    "run_mode": {"type": "string", "minLength": 1},
+    "run_mode": {"enum": ["formal", "debug"]},
     "semantic_config_hash": {"$ref": "#/$defs/sha256"},
     "resolved_config_hash": {"$ref": "#/$defs/sha256"},
     "config_snapshot_ref": {"$ref": "#/$defs/artifactRef"},

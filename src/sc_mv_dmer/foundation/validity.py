@@ -29,6 +29,7 @@ class EffectiveValidity(ImmutableRecord):
     reason: str = Field(min_length=1)
     invalidated_sources: tuple[str, ...] = ()
     dependency_path: tuple[str, ...] = ()
+    dependency_paths: tuple[tuple[str, ...], ...] = ()
     replacement_ref: str | None = None
 
 
@@ -120,6 +121,7 @@ def resolve_effective_validity(node_id: str, registry: Registry) -> EffectiveVal
                 reason=f"unknown dependency node: {current}",
                 invalidated_sources=(current,),
                 dependency_path=visiting + (current,),
+                dependency_paths=(visiting + (current,),),
             )
         if current in visiting:
             return EffectiveValidity(
@@ -127,6 +129,7 @@ def resolve_effective_validity(node_id: str, registry: Registry) -> EffectiveVal
                 reason="dependency cycle detected; validity fails closed",
                 invalidated_sources=(),
                 dependency_path=visiting + (current,),
+                dependency_paths=(visiting + (current,),),
             )
 
         direct = registry._direct_record(current)
@@ -136,6 +139,7 @@ def resolve_effective_validity(node_id: str, registry: Registry) -> EffectiveVal
                 reason=direct.reason,
                 invalidated_sources=(current,),
                 dependency_path=(current,),
+                dependency_paths=((current,),),
             )
         if isinstance(direct, SupersessionRecord):
             return EffectiveValidity(
@@ -143,22 +147,36 @@ def resolve_effective_validity(node_id: str, registry: Registry) -> EffectiveVal
                 reason=direct.reason,
                 invalidated_sources=(current,),
                 dependency_path=(current,),
+                dependency_paths=((current,),),
                 replacement_ref=direct.replacement_node_id,
             )
 
+        invalidated_sources: list[str] = []
+        dependency_paths: list[tuple[str, ...]] = []
+        reasons: list[str] = []
+        replacement_ref: str | None = None
         for predecessor in registry._predecessors(current):
             predecessor_validity = resolve(predecessor, visiting + (current,))
             if predecessor_validity.status is not EffectiveValidityStatus.VALID:
-                path = predecessor_validity.dependency_path
-                if not path or path[0] != current:
-                    path = (current,) + path
-                return EffectiveValidity(
-                    status=EffectiveValidityStatus.STALE_DEPENDENCY,
-                    reason=f"stale dependency: {predecessor_validity.reason}",
-                    invalidated_sources=predecessor_validity.invalidated_sources,
-                    dependency_path=path,
-                    replacement_ref=predecessor_validity.replacement_ref,
+                invalidated_sources.extend(predecessor_validity.invalidated_sources)
+                paths = predecessor_validity.dependency_paths or (
+                    predecessor_validity.dependency_path,
                 )
+                for path in paths:
+                    prefixed = path if path and path[0] == current else (current,) + path
+                    if prefixed not in dependency_paths:
+                        dependency_paths.append(prefixed)
+                reasons.append(predecessor_validity.reason)
+                replacement_ref = replacement_ref or predecessor_validity.replacement_ref
+        if dependency_paths:
+            return EffectiveValidity(
+                status=EffectiveValidityStatus.STALE_DEPENDENCY,
+                reason="stale dependencies: " + "; ".join(reasons),
+                invalidated_sources=tuple(sorted(set(invalidated_sources))),
+                dependency_path=dependency_paths[0],
+                dependency_paths=tuple(dependency_paths),
+                replacement_ref=replacement_ref,
+            )
         return EffectiveValidity(
             status=EffectiveValidityStatus.VALID,
             reason="no direct invalidation or stale predecessor",

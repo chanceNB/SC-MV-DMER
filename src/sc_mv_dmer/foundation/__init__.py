@@ -11,9 +11,13 @@ from sc_mv_dmer.foundation.config import (
 )
 from sc_mv_dmer.foundation.identity import stable_id
 from sc_mv_dmer.foundation.lifecycle import (
+    AutomaticAuthorityMetadata,
     GateEvaluationAttempt,
     HistoricalVerdict,
+    HumanApprovalState,
     InvalidationRecord,
+    LifecycleStore,
+    ManualAuthorityMetadata,
     RunManifest,
     SupersessionRecord,
     TerminalState,
@@ -30,9 +34,13 @@ __all__ = [
     "RunMode",
     "UnknownConfigKeyError",
     "ArtifactRef",
+    "AutomaticAuthorityMetadata",
     "GateEvaluationAttempt",
     "HistoricalVerdict",
+    "HumanApprovalState",
     "InvalidationRecord",
+    "LifecycleStore",
+    "ManualAuthorityMetadata",
     "Registry",
     "RunManifest",
     "RunSpec",

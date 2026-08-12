@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import Enum
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from sc_mv_dmer.foundation.manifests import (
     SHA256_PATTERN,
@@ -43,6 +43,51 @@ class HistoricalVerdict(str, Enum):
     INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 
 
+class AuthorityKind(str, Enum):
+    AUTOMATIC = "automatic"
+    MANUAL = "manual"
+
+
+class HumanApprovalState(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+
+
+class AutomaticAuthorityMetadata(ImmutableRecord):
+    """Typed provenance for an automatic evaluation authority."""
+
+    authority_kind: Literal["automatic"] = "automatic"
+    automation_identity: str = Field(min_length=1)
+
+
+class ManualAuthorityMetadata(ImmutableRecord):
+    """Typed human-approval provenance; approval is never synthesized."""
+
+    authority_kind: Literal["manual"] = "manual"
+    approval_state: HumanApprovalState
+    reviewer_identity: str | None = None
+    approval_artifact_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+
+    @model_validator(mode="after")
+    def _validate_approval_provenance(self) -> "ManualAuthorityMetadata":
+        if self.approval_state is HumanApprovalState.APPROVED:
+            if not self.reviewer_identity or not self.approval_artifact_sha256:
+                raise ValueError(
+                    "approved manual authority requires human reviewer identity "
+                    "and immutable approval artifact checksum"
+                )
+            normalized_identity = self.reviewer_identity.strip().casefold()
+            if "codex" in normalized_identity or "automatic" in normalized_identity:
+                raise ValueError("human reviewer identity cannot be Codex or automatic")
+        return self
+
+
+AuthorityMetadata = Annotated[
+    AutomaticAuthorityMetadata | ManualAuthorityMetadata,
+    Field(discriminator="authority_kind"),
+]
+
+
 class RunManifest(ImmutableRecord):
     """A terminal run record. Its spec preserves complete input provenance."""
 
@@ -72,8 +117,9 @@ class RunManifest(ImmutableRecord):
 class ActiveRun:
     """An in-memory handle which may be finalized exactly once."""
 
-    def __init__(self, spec: RunSpec) -> None:
+    def __init__(self, spec: RunSpec, lifecycle_store: "LifecycleStore") -> None:
         self.spec = spec
+        self._lifecycle_store = lifecycle_store
         self._finalized = False
 
     @property
@@ -81,10 +127,38 @@ class ActiveRun:
         return self._finalized
 
 
-def start_run(spec: RunSpec) -> ActiveRun:
-    """Create an in-memory active handle without executing a run."""
+class LifecycleStore:
+    """Explicit owner of run identities and their one-way active lifecycle."""
 
-    return ActiveRun(spec)
+    def __init__(self) -> None:
+        self._active_runs: dict[str, ActiveRun] = {}
+        self._terminal_run_ids: set[str] = set()
+
+    def start(self, spec: RunSpec) -> ActiveRun:
+        if spec.run_id in self._active_runs or spec.run_id in self._terminal_run_ids:
+            raise DuplicateRecordError(f"duplicate run ID: {spec.run_id}")
+        active = ActiveRun(spec, self)
+        self._active_runs[spec.run_id] = active
+        return active
+
+    def seal(self, active: ActiveRun) -> None:
+        run_id = active.spec.run_id
+        if (
+            active._lifecycle_store is not self
+            or self._active_runs.get(run_id) is not active
+            or active.finalized
+            or run_id in self._terminal_run_ids
+        ):
+            raise TerminalRecordMutationError("run has already been finalized or is not active")
+        active._finalized = True
+        del self._active_runs[run_id]
+        self._terminal_run_ids.add(run_id)
+
+
+def start_run(spec: RunSpec, lifecycle_store: LifecycleStore) -> ActiveRun:
+    """Register a new active handle in an explicit lifecycle store."""
+
+    return lifecycle_store.start(spec)
 
 
 def finalize_run(
@@ -99,8 +173,6 @@ def finalize_run(
 ) -> RunManifest:
     """Seal an active run. A continuation must use a new ``RunSpec`` ID."""
 
-    if active.finalized:
-        raise TerminalRecordMutationError("run has already been finalized")
     manifest = RunManifest(
         spec=active.spec,
         terminal_state=terminal,
@@ -110,7 +182,7 @@ def finalize_run(
         artifacts=tuple(artifacts),
         completed_at=completed_at or datetime.now(timezone.utc),
     )
-    active._finalized = True
+    active._lifecycle_store.seal(active)
     return manifest
 
 
@@ -122,17 +194,27 @@ class GateEvaluationAttempt(ImmutableRecord):
     attempt_number: int = Field(ge=1)
     definition_id: str = Field(min_length=1)
     verdict: HistoricalVerdict
-    authority_kind: str = Field(pattern=r"^(automatic|manual)$")
-    authority_metadata: Mapping[str, Any] = Field(default_factory=dict)
+    authority_kind: AuthorityKind
+    authority_metadata: AuthorityMetadata
     evidence_commit: str = Field(min_length=7)
     evidence_bundle_sha256: str = Field(pattern=SHA256_PATTERN)
     source_run_ids: tuple[str, ...]
     predecessor_dependencies: tuple[str, ...]
 
-    @field_validator("authority_metadata", mode="after")
-    @classmethod
-    def _freeze_authority(cls, value: Mapping[str, Any]) -> Mapping[str, Any]:
-        return freeze_value(value)
+    @model_validator(mode="after")
+    def _validate_authority(self) -> "GateEvaluationAttempt":
+        if self.authority_metadata.authority_kind != self.authority_kind.value:
+            raise ValueError("authority kind must match typed authority metadata")
+        if (
+            self.authority_kind is AuthorityKind.MANUAL
+            and self.verdict is HistoricalVerdict.PASS
+            and (
+                not isinstance(self.authority_metadata, ManualAuthorityMetadata)
+                or self.authority_metadata.approval_state is not HumanApprovalState.APPROVED
+            )
+        ):
+            raise ValueError("manual PASS requires verified human approval provenance")
+        return self
 
 
 class InvalidationRecord(ImmutableRecord):

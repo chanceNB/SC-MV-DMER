@@ -12,10 +12,58 @@
     "definition_id": {"type": "string", "minLength": 1},
     "verdict": {"enum": ["PASS", "FAIL", "BLOCKED", "INSUFFICIENT_EVIDENCE"]},
     "authority_kind": {"enum": ["automatic", "manual"]},
-    "authority_metadata": {"type": "object"},
+    "authority_metadata": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority_kind", "automation_identity"],
+          "properties": {
+            "authority_kind": {"const": "automatic"},
+            "automation_identity": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority_kind", "approval_state"],
+          "properties": {
+            "authority_kind": {"const": "manual"},
+            "approval_state": {"enum": ["PENDING", "APPROVED"]},
+            "reviewer_identity": {"type": "string", "minLength": 1},
+            "approval_artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"approval_state": {"const": "APPROVED"}}},
+              "then": {"required": ["reviewer_identity", "approval_artifact_sha256"]}
+            }
+          ]
+        }
+      ]
+    },
     "evidence_commit": {"type": "string", "minLength": 7},
     "evidence_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "source_run_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
     "predecessor_dependencies": {"type": "array", "items": {"type": "string", "minLength": 1}}
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "authority_kind": {"const": "manual"},
+          "verdict": {"const": "PASS"}
+        },
+        "required": ["authority_kind", "verdict"]
+      },
+      "then": {
+        "properties": {
+          "authority_metadata": {
+            "properties": {"approval_state": {"const": "APPROVED"}},
+            "required": ["approval_state", "reviewer_identity", "approval_artifact_sha256"]
+          }
+        }
+      }
+    }
+  ]
 }

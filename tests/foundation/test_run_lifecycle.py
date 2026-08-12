@@ -5,8 +5,11 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from sc_mv_dmer.foundation.lifecycle import (
+    DuplicateRecordError,
+    LifecycleStore,
     TerminalRecordMutationError,
     TerminalState,
     finalize_run,
@@ -28,7 +31,7 @@ def artifact(name: str) -> ArtifactRef:
 def run_spec(run_id: str = "run-001", **changes: object) -> RunSpec:
     values: dict[str, object] = {
         "run_id": run_id,
-        "run_mode": "reproducibility",
+        "run_mode": "formal",
         "semantic_config_hash": "b" * 64,
         "resolved_config_hash": "c" * 64,
         "config_snapshot_ref": artifact("config"),
@@ -48,7 +51,7 @@ def run_spec(run_id: str = "run-001", **changes: object) -> RunSpec:
 
 
 def test_terminal_run_cannot_reopen_or_finalize_twice() -> None:
-    active = start_run(run_spec())
+    active = start_run(run_spec(), LifecycleStore())
     manifest = finalize_run(
         active,
         TerminalState.SUCCEEDED,
@@ -61,12 +64,32 @@ def test_terminal_run_cannot_reopen_or_finalize_twice() -> None:
         finalize_run(active, TerminalState.FAILED, terminal_reason="rewrite history")
 
 
+def test_lifecycle_store_rejects_duplicate_run_identity_before_two_handles_can_finalize() -> None:
+    store = LifecycleStore()
+    first = start_run(run_spec(), store)
+
+    with pytest.raises(DuplicateRecordError, match="run ID"):
+        start_run(run_spec(), store)
+
+    finalize_run(first, TerminalState.SUCCEEDED, terminal_reason="completed fixture")
+    with pytest.raises(DuplicateRecordError, match="run ID"):
+        start_run(run_spec(), store)
+
+
 def test_terminal_state_enum_excludes_running() -> None:
     assert {state.value for state in TerminalState} == {
         "SUCCEEDED",
         "FAILED",
         "INTERRUPTED",
     }
+
+
+def test_run_spec_accepts_only_existing_formal_or_debug_run_modes() -> None:
+    assert run_spec(run_mode="formal").run_mode.value == "formal"
+    assert run_spec(run_mode="debug").run_mode.value == "debug"
+
+    with pytest.raises(ValidationError, match="run_mode"):
+        run_spec(run_mode="reproducibility")
 
 
 def test_continuation_has_new_identity_and_preserves_provenance() -> None:
@@ -89,7 +112,7 @@ def test_finalized_nested_values_are_not_mutable_through_aliases() -> None:
     checkpoints = [artifact("checkpoint")]
     artifacts = [artifact("output")]
     manifest = finalize_run(
-        start_run(run_spec()),
+        start_run(run_spec(), LifecycleStore()),
         TerminalState.SUCCEEDED,
         terminal_reason="completed expected fixture work",
         metrics=metrics,
@@ -110,7 +133,7 @@ def test_finalized_nested_values_are_not_mutable_through_aliases() -> None:
 
 def test_immutable_records_remain_json_serializable() -> None:
     manifest = finalize_run(
-        start_run(run_spec()),
+        start_run(run_spec(), LifecycleStore()),
         TerminalState.SUCCEEDED,
         terminal_reason="completed expected fixture work",
         metrics={"scores": {"accuracy": 0.75}},

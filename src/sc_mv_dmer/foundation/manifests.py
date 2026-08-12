@@ -7,6 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from sc_mv_dmer.foundation.config import RunMode
+
 
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 
@@ -64,7 +66,7 @@ class RunSpec(ImmutableRecord):
     """All immutable inputs and provenance required to identify a run."""
 
     run_id: str = Field(min_length=1)
-    run_mode: str = Field(min_length=1)
+    run_mode: RunMode
     semantic_config_hash: str = Field(pattern=SHA256_PATTERN)
     resolved_config_hash: str = Field(pattern=SHA256_PATTERN)
     config_snapshot_ref: ArtifactRef

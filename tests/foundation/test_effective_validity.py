@@ -3,12 +3,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
+from pydantic import ValidationError
 
 from sc_mv_dmer.foundation.lifecycle import (
     DuplicateRecordError,
+    AutomaticAuthorityMetadata,
     GateEvaluationAttempt,
     HistoricalVerdict,
+    HumanApprovalState,
     InvalidationRecord,
+    ManualAuthorityMetadata,
     SupersessionRecord,
 )
 from sc_mv_dmer.foundation.validity import (
@@ -63,6 +67,38 @@ def test_invalidation_only_affects_dependency_descendants() -> None:
     assert resolve_effective_validity("unaffected", registry).status is EffectiveValidityStatus.VALID
 
 
+def test_multiple_stale_predecessors_report_all_invalidated_sources_and_paths() -> None:
+    registry = Registry()
+    add_nodes(registry, "source-a", "source-b", "downstream")
+    registry.add_dependency("downstream", "source-a")
+    registry.add_dependency("downstream", "source-b")
+    registry.append_invalidation(
+        InvalidationRecord(
+            record_id="invalidation-a",
+            node_id="source-a",
+            reason="source A no longer valid",
+            invalidated_by="reviewer-001",
+        )
+    )
+    registry.append_invalidation(
+        InvalidationRecord(
+            record_id="invalidation-b",
+            node_id="source-b",
+            reason="source B no longer valid",
+            invalidated_by="reviewer-001",
+        )
+    )
+
+    result = resolve_effective_validity("downstream", registry)
+
+    assert result.status is EffectiveValidityStatus.STALE_DEPENDENCY
+    assert result.invalidated_sources == ("source-a", "source-b")
+    assert result.dependency_paths == (
+        ("downstream", "source-a"),
+        ("downstream", "source-b"),
+    )
+
+
 def test_replacement_provenance_is_returned_for_superseded_node() -> None:
     registry = Registry()
     add_nodes(registry, "old", "replacement", "dependent")
@@ -92,7 +128,7 @@ def test_old_superseded_gate_pass_is_not_an_active_predecessor() -> None:
         definition_id="gate-definition",
         verdict=HistoricalVerdict.PASS,
         authority_kind="automatic",
-        authority_metadata={"rule": "v1"},
+        authority_metadata=AutomaticAuthorityMetadata(automation_identity="gate-engine-v1"),
         evidence_commit="1234567890abcdef",
         evidence_bundle_sha256="d" * 64,
         source_run_ids=("run-001",),
@@ -105,7 +141,7 @@ def test_old_superseded_gate_pass_is_not_an_active_predecessor() -> None:
         definition_id="gate-definition",
         verdict=HistoricalVerdict.BLOCKED,
         authority_kind="automatic",
-        authority_metadata={"rule": "v2"},
+        authority_metadata=AutomaticAuthorityMetadata(automation_identity="gate-engine-v2"),
         evidence_commit="fedcba0987654321",
         evidence_bundle_sha256="e" * 64,
         source_run_ids=("run-001",),
@@ -160,12 +196,60 @@ def test_records_are_append_only_and_human_approval_is_never_synthesized() -> No
         definition_id="human-gate",
         verdict=HistoricalVerdict.INSUFFICIENT_EVIDENCE,
         authority_kind="manual",
-        authority_metadata={"human_criterion_status": "PENDING"},
+        authority_metadata=ManualAuthorityMetadata(
+            approval_state=HumanApprovalState.PENDING,
+        ),
         evidence_commit="1234567890abcdef",
         evidence_bundle_sha256="f" * 64,
         source_run_ids=(),
         predecessor_dependencies=(),
     )
 
-    assert pending.authority_metadata["human_criterion_status"] == "PENDING"
-    assert "approved_by" not in pending.authority_metadata
+    assert pending.authority_metadata.approval_state is HumanApprovalState.PENDING
+    assert pending.authority_metadata.reviewer_identity is None
+
+
+def test_manual_pass_requires_verified_human_identity_and_approval_artifact() -> None:
+    values = {
+        "evaluation_id": "gate-eval-approved",
+        "gate_version": "1.0",
+        "attempt_number": 1,
+        "definition_id": "human-gate",
+        "verdict": HistoricalVerdict.PASS,
+        "authority_kind": "manual",
+        "evidence_commit": "1234567890abcdef",
+        "evidence_bundle_sha256": "a" * 64,
+        "source_run_ids": (),
+        "predecessor_dependencies": (),
+    }
+    with pytest.raises(ValidationError, match="manual PASS"):
+        GateEvaluationAttempt(
+            **values,
+            authority_metadata=ManualAuthorityMetadata(
+                approval_state=HumanApprovalState.PENDING,
+            ),
+        )
+
+    approved = GateEvaluationAttempt(
+        **values,
+        authority_metadata=ManualAuthorityMetadata(
+            approval_state=HumanApprovalState.APPROVED,
+            reviewer_identity="reviewer-001",
+            approval_artifact_sha256="b" * 64,
+        ),
+    )
+
+    assert approved.authority_metadata.reviewer_identity == "reviewer-001"
+
+
+@pytest.mark.parametrize(
+    "identity",
+    ["codex", "automatic", "Codex Automation", "automatic-gate-runner"],
+)
+def test_manual_approval_rejects_automatic_or_codex_identities(identity: str) -> None:
+    with pytest.raises(ValidationError, match="human reviewer"):
+        ManualAuthorityMetadata(
+            approval_state=HumanApprovalState.APPROVED,
+            reviewer_identity=identity,
+            approval_artifact_sha256="b" * 64,
+        )
