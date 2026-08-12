@@ -15,7 +15,9 @@ from sc_mv_dmer.foundation.preflight import observe_preflight
 from sc_mv_dmer.foundation.qualification import (
     E1Readiness,
     QualificationWriteError,
+    load_qualification_schema,
     qualify_e0_minimum_bootstrap,
+    validate_qualification_artifact,
     write_terminal_qualification,
 )
 from sc_mv_dmer.cli import main
@@ -230,19 +232,15 @@ def test_qualify_step_cli_records_explicit_correction_supersession(tmp_path: Pat
     assert stored["correction_reason"] == "pinned checksum trust anchored to code-controlled registry; MERT status v3"
 
 
-def test_qualification_schema_covers_every_bundle_field_and_evidence_value() -> None:
-    """A strict schema missing a bundle field would reject its own qualification evidence."""
+def test_current_qualification_schema_covers_every_bundle_field_and_value(tmp_path: Path) -> None:
+    """A strict current schema missing a bundle field would reject its own output."""
 
     schema = json.loads(
         (REPOSITORY_ROOT / "schemas" / "e0_minimum_qualification.schema.json").read_text(
             encoding="utf-8"
         )
     )
-    evidence = json.loads(
-        (REPOSITORY_ROOT / "evidence" / "qualifications" / "step-0-minimum-bootstrap-v3.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    evidence = qualification(tmp_path, status=mert_status(verified=False)).model_dump(mode="json")
     fields = set(__import__("sc_mv_dmer.foundation.qualification", fromlist=["E0MinimumQualificationBundle"]).E0MinimumQualificationBundle.model_fields)
 
     assert schema["additionalProperties"] is False
@@ -258,3 +256,42 @@ def test_qualification_schema_covers_every_bundle_field_and_evidence_value() -> 
         "mert_upstream_identity", "qualification_sha256",
     ):
         assert len(evidence[key]) == 64
+
+
+@pytest.mark.parametrize(
+    "artifact_name",
+    (
+        "step-0-minimum-bootstrap.json",
+        "step-0-minimum-bootstrap-v2.json",
+        "step-0-minimum-bootstrap-v3.json",
+    ),
+)
+def test_legacy_qualification_artifacts_select_and_validate_against_v1_schema(
+    artifact_name: str,
+) -> None:
+    """A v1 artifact must keep selecting its legacy contract after current schema evolves."""
+
+    artifact = json.loads(
+        (REPOSITORY_ROOT / "evidence" / "qualifications" / artifact_name).read_text(
+            encoding="utf-8"
+        )
+    )
+    schema = load_qualification_schema(artifact)
+
+    assert schema["$id"].endswith("e0_minimum_qualification.v1.schema.json")
+    assert schema["properties"]["schema_version"]["const"] == "1.0"
+    validate_qualification_artifact(artifact)
+
+
+def test_current_v1_1_bundle_selects_strict_current_schema(tmp_path: Path) -> None:
+    """New qualification output must select a strict 1.1 schema with all fields required."""
+
+    bundle = qualification(tmp_path, status=mert_status(verified=False))
+    artifact = bundle.model_dump(mode="json")
+    schema = load_qualification_schema(artifact)
+
+    assert artifact["schema_version"] == "1.1"
+    assert schema["$id"].endswith("e0_minimum_qualification.schema.json")
+    assert schema["title"] == "E0MinimumQualificationBundle v1.1"
+    assert set(schema["required"]) == set(artifact)
+    validate_qualification_artifact(artifact)

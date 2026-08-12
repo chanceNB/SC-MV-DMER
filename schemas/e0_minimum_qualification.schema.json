@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sc-mv-dmer.local/schemas/e0_minimum_qualification.schema.json",
-  "title": "E0MinimumQualificationBundle",
+  "title": "E0MinimumQualificationBundle v1.1",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "implementation_git_commit", "observed_git_dirty", "config_schema_version", "research_spec_version", "semantic_config_hash", "resolved_config_hash", "variants_catalog_sha256", "stages_catalog_sha256", "full_catalog_blocker", "full_catalog_blocker_deferred", "stage_authority_coverage", "probe_manifest_id", "probe_manifest_sha256", "dataset_id", "song_id", "sample_id", "source_relative_path", "source_sha256", "probe_seconds", "target_sample_rate_hz", "target_sample_count", "probe_preparation_status", "mert_repository", "mert_revision", "mert_upstream_identity", "mert_local_verification_status", "e0_implementation_status", "e1_1_readiness", "e1_1_blocked_roles", "e1_1_blocked_reasons", "e1_1_prerequisite_validity", "formal_execution_ready", "paper_eligible", "supersedes", "correction_reason", "qualification_sha256"],
   "properties": {
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"const": "1.1"},
     "implementation_git_commit": {"type": "string", "minLength": 7},
     "observed_git_dirty": {"type": "boolean"},
     "config_schema_version": {"type": "string", "minLength": 1},

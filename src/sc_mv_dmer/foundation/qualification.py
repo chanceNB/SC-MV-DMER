@@ -45,7 +45,7 @@ class QualificationWriteError(FileExistsError):
 
 
 class E0MinimumQualificationBundle(ImmutableRecord):
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["1.1"] = "1.1"
     implementation_git_commit: str
     observed_git_dirty: bool
     config_schema_version: str
@@ -91,6 +91,46 @@ class E0MinimumQualificationBundle(ImmutableRecord):
 
 def _repository_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+_QUALIFICATION_SCHEMA_PATHS = {
+    "1.0": "schemas/e0_minimum_qualification.v1.schema.json",
+    "1.1": "schemas/e0_minimum_qualification.schema.json",
+}
+
+
+def load_qualification_schema(artifact: Mapping[str, object]) -> dict[str, object]:
+    """Select the immutable schema contract addressed by an artifact's version."""
+
+    version = artifact.get("schema_version")
+    path = _QUALIFICATION_SCHEMA_PATHS.get(version)
+    if path is None:
+        raise ValueError(f"unsupported qualification schema version: {version!r}")
+    loaded = json.loads((_repository_root() / path).read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise ValueError("qualification schema must be an object")
+    return loaded
+
+
+def validate_qualification_artifact(artifact: Mapping[str, object]) -> None:
+    """Validate the strict local schema subset used by qualification evidence tests."""
+
+    schema = load_qualification_schema(artifact)
+    properties = schema["properties"]
+    required = set(schema["required"])
+    if not isinstance(properties, dict) or not required <= set(artifact):
+        raise ValueError("qualification artifact is missing required schema fields")
+    if schema.get("additionalProperties") is False and set(artifact) - set(properties):
+        raise ValueError("qualification artifact has undeclared fields")
+    for name, value in artifact.items():
+        rule = properties[name]
+        if "const" in rule and value != rule["const"]:
+            raise ValueError(f"qualification field violates const: {name}")
+        if "enum" in rule and value not in rule["enum"]:
+            raise ValueError(f"qualification field violates enum: {name}")
+        pattern = rule.get("pattern")
+        if pattern is not None and (not isinstance(value, str) or re.fullmatch(pattern, value) is None):
+            raise ValueError(f"qualification field violates pattern: {name}")
 
 
 def _file_sha256(path: Path) -> str:
@@ -262,7 +302,7 @@ def qualify_e0_minimum_bootstrap(
         )
     readiness = E1Readiness.BLOCKED if blocked_reasons else E1Readiness.READY
     payload: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "implementation_git_commit": observation.implementation_git_commit,
         "observed_git_dirty": observation.observed_git_dirty,
         "config_schema_version": observation.config_schema_version,
