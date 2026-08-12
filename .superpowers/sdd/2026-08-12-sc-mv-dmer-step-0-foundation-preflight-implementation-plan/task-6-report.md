@@ -40,3 +40,9 @@
 - GREEN: `./.venv/Scripts/python.exe -m pytest tests/foundation/test_formal_preflight.py tests/foundation/test_step0_qualification.py -q` passed after all prerequisite validity became derived from observed input only.
 - `0b3891d7f9d824e1f1575d8d1f4af345c70207de` records the code fix. Schema properties and required fields now exactly match the immutable bundle model, with evidence key/const/enum/hash checks in focused tests.
 - `step-0-minimum-bootstrap-v3.json` is append-only, supersedes v2, and was generated from clean formal observation plus `E:\DEAM` source checksum revalidation and MERT status v3. Its current status remains `COMPLETE/BLOCKED/false/false`; upstream MERT identity is `NOT_VALID` because the code-controlled registry is incomplete.
+
+## Review fix round 2: schema evolution
+
+- RED: no version-addressable legacy schema or artifact schema selector existed; historical v1/v2/v3 could only be compared against the mutable current schema.
+- GREEN: `e0_minimum_qualification.v1.schema.json` preserves the strict 1.0 contract for historical evidence; the current Pydantic bundle and current schema are 1.1. The selector maps each artifact by `schema_version`, and tests validate v1/v2/v3 through the legacy schema without rewriting it.
+- `e751dc13a22c676a0932593783c58c12eca75168` records schema evolution. `step-0-minimum-bootstrap-v4.json` is an append-only 1.1 successor to v3, generated from clean formal observation, `E:\DEAM` probe revalidation, and MERT status v3.
