@@ -15,6 +15,9 @@ PINNED_MERT_REPOSITORY = "m-a-p/MERT-v1-95M"
 PINNED_MERT_REVISION = "12af15fef9d0ac838c3f475bfbbf26d2060dd4f5"
 PINNED_MERT_LICENSE = "cc-by-nc-4.0"
 _ROLES = {"config": "config.json", "processor": "preprocessor_config.json", "weights": "pytorch_model.bin"}
+PINNED_MERT_EXPECTED_SHA256 = {
+    "weights": "a2b8b747f72c06e0595aeae41ae5473f4364938c6b39b2c58be38c48e6bd3fcd",
+}
 
 
 class UpstreamModelBlocker(RuntimeError):
@@ -38,12 +41,12 @@ def _hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def discover_mert_local(local_root: Path | None, *, revision: str = PINNED_MERT_REVISION, expected_checksums: dict[str, str] | None = None) -> MertUpstreamStatus:
+def discover_mert_local(local_root: Path | None, *, revision: str = PINNED_MERT_REVISION) -> MertUpstreamStatus:
     if revision != PINNED_MERT_REVISION:
         raise ValueError("MERT revision must be pinned to the frozen revision")
     files: dict[str, dict[str, str]] = {}
     missing: list[str] = []
-    expected = dict(expected_checksums or {})
+    expected = dict(PINNED_MERT_EXPECTED_SHA256)
     mismatches: list[str] = []
     for role, filename in _ROLES.items():
         path = Path(local_root) / filename if local_root is not None else None
@@ -67,13 +70,14 @@ def discover_mert_local(local_root: Path | None, *, revision: str = PINNED_MERT_
 
 def bind_mert_formal(status: MertUpstreamStatus) -> MertUpstreamStatus:
     expected_roles = set(_ROLES)
-    recomputed_identity = sha256_canonical({"repository": PINNED_MERT_REPOSITORY, "revision": PINNED_MERT_REVISION, "license": PINNED_MERT_LICENSE, "expected_checksums": status.expected_checksums})
+    recomputed_identity = sha256_canonical({"repository": PINNED_MERT_REPOSITORY, "revision": PINNED_MERT_REVISION, "license": PINNED_MERT_LICENSE, "expected_checksums": PINNED_MERT_EXPECTED_SHA256})
     if (
         status.repository != PINNED_MERT_REPOSITORY
         or status.revision != PINNED_MERT_REVISION
         or status.license != PINNED_MERT_LICENSE
         or set(status.required_roles) != expected_roles
-        or set(status.expected_checksums) != expected_roles
+        or status.expected_checksums != PINNED_MERT_EXPECTED_SHA256
+        or set(PINNED_MERT_EXPECTED_SHA256) != expected_roles
         or set(status.local_files) != expected_roles
         or status.missing_roles
         or status.checksum_mismatches

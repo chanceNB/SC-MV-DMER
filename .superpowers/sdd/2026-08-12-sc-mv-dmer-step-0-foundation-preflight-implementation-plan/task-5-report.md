@@ -96,3 +96,13 @@ repository/revision/license identity, expected checksum role map, actual local
 role map, per-role hash equality, derived missing/mismatch state, and upstream
 identity. A caller-constructed `VERIFIED` status with empty inventories now
 fails the formal boundary.
+
+## Review fix round 3
+
+Production expected checksums now originate exclusively from the code-controlled
+`PINNED_MERT_EXPECTED_SHA256` registry. Only the authority-provided weights LFS
+OID is present; config and processor deliberately remain absent. Public
+discovery cannot accept a caller-supplied expected map, and formal binding
+requires the received map exactly equal the controlled registry *and* that the
+controlled registry cover all required roles. Therefore internally consistent
+arbitrary fixtures remain blocked rather than becoming a formal MERT bind.

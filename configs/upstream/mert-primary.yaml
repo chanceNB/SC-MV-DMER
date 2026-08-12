@@ -7,3 +7,4 @@ required_roles:
   weights: pytorch_model.bin
 expected_sha256:
   weights: a2b8b747f72c06e0595aeae41ae5473f4364938c6b39b2c58be38c48e6bd3fcd
+  # config and processor intentionally absent: no authoritative checksum is registered.
