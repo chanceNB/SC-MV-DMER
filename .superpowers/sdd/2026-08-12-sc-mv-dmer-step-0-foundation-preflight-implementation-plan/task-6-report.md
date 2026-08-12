@@ -46,3 +46,9 @@
 - RED: no version-addressable legacy schema or artifact schema selector existed; historical v1/v2/v3 could only be compared against the mutable current schema.
 - GREEN: `e0_minimum_qualification.v1.schema.json` preserves the strict 1.0 contract for historical evidence; the current Pydantic bundle and current schema are 1.1. The selector maps each artifact by `schema_version`, and tests validate v1/v2/v3 through the legacy schema without rewriting it.
 - `e751dc13a22c676a0932593783c58c12eca75168` records schema evolution. `step-0-minimum-bootstrap-v4.json` is an append-only 1.1 successor to v3, generated from clean formal observation, `E:\DEAM` probe revalidation, and MERT status v3.
+
+## Review fix round 3: full Draft 2020-12 validation
+
+- RED: `jsonschema` was absent, so the new standard-validator tests failed during collection. PyPI pip requests were TLS/proxy blocked; the controller supplied SHA-256-verified wheels and installed `jsonschema 4.25.1` plus its offline dependencies.
+- GREEN: qualification now calls `Draft202012Validator.check_schema` and `Draft202012Validator(schema).validate(...)` for the selected v1/v1.1 schema. Negative artifacts with a string boolean, empty commit, non-string blocked-role item, and non-array stage coverage are rejected.
+- `7e6af56bcca2edc32adb453b62303e6c2b7f938b` records the dependency/runtime validation fix. This alters neither qualification generation fields nor qualification schema semantics; v4 remains current and no v5 evidence was generated.

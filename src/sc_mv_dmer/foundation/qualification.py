@@ -10,6 +10,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
+from jsonschema import Draft202012Validator
+
 from sc_mv_dmer.data.discovery import DEAM_DATASET_VERSION
 from sc_mv_dmer.data.probes import (
     PROBE_RULE_VERSION,
@@ -113,24 +115,11 @@ def load_qualification_schema(artifact: Mapping[str, object]) -> dict[str, objec
 
 
 def validate_qualification_artifact(artifact: Mapping[str, object]) -> None:
-    """Validate the strict local schema subset used by qualification evidence tests."""
+    """Validate an artifact with its selected full Draft 2020-12 contract."""
 
     schema = load_qualification_schema(artifact)
-    properties = schema["properties"]
-    required = set(schema["required"])
-    if not isinstance(properties, dict) or not required <= set(artifact):
-        raise ValueError("qualification artifact is missing required schema fields")
-    if schema.get("additionalProperties") is False and set(artifact) - set(properties):
-        raise ValueError("qualification artifact has undeclared fields")
-    for name, value in artifact.items():
-        rule = properties[name]
-        if "const" in rule and value != rule["const"]:
-            raise ValueError(f"qualification field violates const: {name}")
-        if "enum" in rule and value not in rule["enum"]:
-            raise ValueError(f"qualification field violates enum: {name}")
-        pattern = rule.get("pattern")
-        if pattern is not None and (not isinstance(value, str) or re.fullmatch(pattern, value) is None):
-            raise ValueError(f"qualification field violates pattern: {name}")
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(dict(artifact))
 
 
 def _file_sha256(path: Path) -> str:

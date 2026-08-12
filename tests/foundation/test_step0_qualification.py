@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 from sc_mv_dmer.data.discovery import DEAM_DATASET_VERSION, DeamSource
 from sc_mv_dmer.data.probes import DeamProbeManifest, build_probe
@@ -295,3 +296,24 @@ def test_current_v1_1_bundle_selects_strict_current_schema(tmp_path: Path) -> No
     assert schema["title"] == "E0MinimumQualificationBundle v1.1"
     assert set(schema["required"]) == set(artifact)
     validate_qualification_artifact(artifact)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("observed_git_dirty", "false"),
+        ("implementation_git_commit", ""),
+        ("e1_1_blocked_roles", [1]),
+        ("stage_authority_coverage", "E0_MINIMUM_BOOTSTRAP"),
+    ),
+)
+def test_draft202012_schema_rejects_malformed_current_qualification_fields(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    """Relaxing JSON Schema type/item/minLength checks would admit malformed evidence."""
+
+    artifact = qualification(tmp_path, status=mert_status(verified=False)).model_dump(mode="json")
+    artifact[field] = value
+
+    with pytest.raises(JsonSchemaValidationError):
+        validate_qualification_artifact(artifact)
