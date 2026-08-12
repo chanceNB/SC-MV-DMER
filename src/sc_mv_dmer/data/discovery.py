@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -47,15 +48,19 @@ def read_windows_audio_duration(path: Path) -> float:
 
     script = (
         "$shell=New-Object -ComObject Shell.Application;"
-        f"$folder=$shell.Namespace('{path.parent}');"
-        f"$item=$folder.ParseName('{path.name}');"
+        "$source=Get-Item -LiteralPath $env:SC_MV_DMER_DURATION_SOURCE;"
+        "$folder=$shell.Namespace($source.DirectoryName);"
+        "$item=$folder.ParseName($source.Name);"
         "$duration=$folder.GetDetailsOf($item,27); Write-Output $duration"
     )
+    environment = os.environ.copy()
+    environment["SC_MV_DMER_DURATION_SOURCE"] = str(path)
     result = subprocess.run(
         ["powershell", "-NoProfile", "-Command", script],
         check=True,
         capture_output=True,
         text=True,
+        env=environment,
     )
     values = [int(value) for value in re.findall(r"\d+", result.stdout)]
     if not values:

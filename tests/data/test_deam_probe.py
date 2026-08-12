@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
+from types import SimpleNamespace
 
 import pytest
 
-from sc_mv_dmer.data.discovery import discover_deam_source
+from sc_mv_dmer.data.discovery import discover_deam_source, read_windows_audio_duration
 from sc_mv_dmer.data.probes import PROBE_SECONDS, TARGET_SAMPLE_RATE, build_probe, write_probe_manifest
 from sc_mv_dmer.cli import main
 
@@ -72,3 +74,22 @@ def test_cli_registers_probe_from_explicit_runtime_data_root_without_overwrite(t
     assert main(["register-deam-probe", "--data-root", str(root), "--output", str(output)]) == 0
     with pytest.raises(FileExistsError):
         main(["register-deam-probe", "--data-root", str(root), "--output", str(output)])
+
+
+def test_duration_reader_passes_untrusted_path_only_through_task_specific_environment(monkeypatch, tmp_path):
+    path = tmp_path / "O'Brien; Write-Error injected" / "2.mp3"
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return SimpleNamespace(stdout="00:00:45")
+
+    import sc_mv_dmer.data.discovery as discovery
+
+    monkeypatch.setattr(discovery.subprocess, "run", fake_run)
+    assert read_windows_audio_duration(path) == 45.0
+    assert str(path) not in captured["command"][-1]
+    assert "Write-Error injected" not in captured["command"][-1]
+    assert captured["kwargs"]["env"]["SC_MV_DMER_DURATION_SOURCE"] == str(path)
+    assert captured["kwargs"]["env"]["PATH"] == os.environ["PATH"]

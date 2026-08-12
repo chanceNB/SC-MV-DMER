@@ -106,3 +106,15 @@ discovery cannot accept a caller-supplied expected map, and formal binding
 requires the received map exactly equal the controlled registry *and* that the
 controlled registry cover all required roles. Therefore internally consistent
 arbitrary fixtures remain blocked rather than becoming a formal MERT bind.
+
+## Final security correction
+
+The Windows duration reader no longer interpolates runtime data paths into a
+PowerShell `-Command` string. It retains the process environment, supplies the
+path only through `SC_MV_DMER_DURATION_SOURCE`, and resolves it in PowerShell
+with `Get-Item -LiteralPath` before obtaining parent/leaf metadata. The
+test-first regression uses a path containing an apostrophe and semicolon,
+asserts that neither the path nor injection text occurs in the command, checks
+the task-specific environment handoff, and verifies parsed mock duration.
+
+Focused data/MERT tests: 11 passed. Full suite: 90 passed. No artifact changed.
