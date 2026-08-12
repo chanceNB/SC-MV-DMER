@@ -1,0 +1,16 @@
+{
+  "dataset_id": "dataset_2f20a12d8dc5913cdd20d836fa33aa37bac349cf69117b8141595413ebe97d29",
+  "song_id": "song_a73cfb75df81c197e9e11e58bc0832df0811e0d3158529af04cffb3f0a136f1d",
+  "sample_id": "sample_bceeabb92e455714f1dd8c81efee768bd27abff4b9207fb68d4e3d069a23aab8",
+  "source_relative_path": "DEAM_audio/MEMD_audio/2.mp3",
+  "source_sha256": "e63489839b957bbd5a6d8b073bacdcb64b7a6b2883802c10c8148a93219dce7b",
+  "source_size_bytes": 600696,
+  "source_duration_seconds": 45.0,
+  "probe_seconds": 45,
+  "target_sample_rate_hz": 24000,
+  "target_sample_count": 1080000,
+  "crop_resample_contract": "crop [0,45)s; resample only if needed to 24000 Hz; not executed",
+  "preparation_status": "SPECIFIED_NOT_EXECUTED",
+  "semantic_identity_json": "{\"dataset_id\":\"dataset_2f20a12d8dc5913cdd20d836fa33aa37bac349cf69117b8141595413ebe97d29\",\"probe_seconds\":45,\"rule_version\":\"deam-smallest-numeric-eligible-45s-v1\",\"song_id\":\"song_a73cfb75df81c197e9e11e58bc0832df0811e0d3158529af04cffb3f0a136f1d\",\"source_relative_path\":\"DEAM_audio/MEMD_audio/2.mp3\",\"source_sha256\":\"e63489839b957bbd5a6d8b073bacdcb64b7a6b2883802c10c8148a93219dce7b\",\"target_sample_count\":1080000,\"target_sample_rate_hz\":24000}",
+  "semantic_identity_sha256": "9be7f06fac9ee9922d6d0337ee9ec4dfe304f25eab9324271bbfe306113e564c"
+}

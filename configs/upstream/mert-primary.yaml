@@ -1,0 +1,7 @@
+repository: m-a-p/MERT-v1-95M
+revision: 12af15fef9d0ac838c3f475bfbbf26d2060dd4f5
+license: cc-by-nc-4.0
+required_roles:
+  config: config.json
+  processor: preprocessor_config.json
+  weights: pytorch_model.bin

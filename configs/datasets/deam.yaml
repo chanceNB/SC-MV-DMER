@@ -1,0 +1,5 @@
+dataset_id: DEAM
+dataset_version: deam-e1-v1
+selection_rule: deam-smallest-numeric-eligible-45s-v1
+probe_seconds: 45
+target_sample_rate_hz: 24000

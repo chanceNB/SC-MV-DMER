@@ -1,0 +1,18 @@
+{
+  "repository": "m-a-p/MERT-v1-95M",
+  "revision": "12af15fef9d0ac838c3f475bfbbf26d2060dd4f5",
+  "license": "cc-by-nc-4.0",
+  "required_roles": [
+    "config",
+    "processor",
+    "weights"
+  ],
+  "local_files": {},
+  "missing_roles": [
+    "config",
+    "processor",
+    "weights"
+  ],
+  "local_verification_status": "BLOCKED_MISSING_LOCAL_BYTES",
+  "upstream_identity": "b58705adc45b39586036ba8867a705ff53e037b3a55ba783f1d2ccb7ad4a3b65"
+}
