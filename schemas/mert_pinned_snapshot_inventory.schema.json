@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/mert_pinned_snapshot_inventory.schema.json",
+  "title": "MertPinnedSnapshotInventory v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "repository_id", "revision", "model_root_runtime", "acquisition_mechanism", "acquisition_version", "acquisition_allowlist", "files", "required_files_complete", "fairseq_checkpoint_status", "snapshot_aggregate_sha256", "supersedes", "inventory_sha256"],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "file": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "relative_path", "size_bytes", "sha256"],
+      "properties": {
+        "role": {"type": "string", "minLength": 1}, "relative_path": {"type": "string", "minLength": 1},
+        "size_bytes": {"type": "integer", "minimum": 1}, "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "repository_id": {"const": "m-a-p/MERT-v1-95M"},
+    "revision": {"const": "12af15fef9d0ac838c3f475bfbbf26d2060dd4f5"},
+    "model_root_runtime": {"type": "string", "minLength": 1},
+    "acquisition_mechanism": {"const": "huggingface_hub.snapshot_download"},
+    "acquisition_version": {"type": "string", "minLength": 1},
+    "acquisition_allowlist": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"type": "string"}},
+    "files": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/file"}},
+    "required_files_complete": {"const": true},
+    "fairseq_checkpoint_status": {"const": "NOT_ACQUIRED_NOT_CONSUMED"},
+    "snapshot_aggregate_sha256": {"$ref": "#/$defs/sha256"},
+    "supersedes": {"type": "string", "minLength": 1},
+    "inventory_sha256": {"$ref": "#/$defs/sha256"}
+  }
+}

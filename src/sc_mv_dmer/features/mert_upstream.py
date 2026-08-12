@@ -14,8 +14,18 @@ from sc_mv_dmer.foundation.manifests import ImmutableRecord
 PINNED_MERT_REPOSITORY = "m-a-p/MERT-v1-95M"
 PINNED_MERT_REVISION = "12af15fef9d0ac838c3f475bfbbf26d2060dd4f5"
 PINNED_MERT_LICENSE = "cc-by-nc-4.0"
-_ROLES = {"config": "config.json", "processor": "preprocessor_config.json", "weights": "pytorch_model.bin"}
+_ROLES = {
+    "config": "config.json",
+    "processor": "preprocessor_config.json",
+    "configuration_code": "configuration_MERT.py",
+    "modeling_code": "modeling_MERT.py",
+    "weights": "pytorch_model.bin",
+}
 PINNED_MERT_EXPECTED_SHA256 = {
+    "config": "ea2627c4c7825cd66f3c944b6b966331604c35928174e0100cd4a82829424e32",
+    "processor": "cc5a5e4a5d3b1a758a5ed984b2eaa15bb0522d811d44a9eed82bfca4baa0dc8f",
+    "configuration_code": "ae0ec2bab8f59c724ba9878a7c20b67210189536ea62d34a56775968e9decb03",
+    "modeling_code": "6c3ee73cef6f0c30ef494f88d96f891fa6925ffe663fa391b512f4b57abecc6c",
     "weights": "a2b8b747f72c06e0595aeae41ae5473f4364938c6b39b2c58be38c48e6bd3fcd",
 }
 
@@ -59,7 +69,15 @@ def discover_mert_local(local_root: Path | None, *, revision: str = PINNED_MERT_
                 mismatches.append(role)
     identity = sha256_canonical({"repository": PINNED_MERT_REPOSITORY, "revision": revision, "license": PINNED_MERT_LICENSE, "expected_checksums": expected})
     unregistered = [role for role in _ROLES if role not in expected]
-    status = "EXPECTED_CHECKSUMS_UNREGISTERED" if unregistered else "BLOCKED_MISSING_LOCAL_BYTES" if missing else "CHECKSUM_MISMATCH" if mismatches else "VERIFIED"
+    status = (
+        "EXPECTED_CHECKSUMS_UNREGISTERED"
+        if unregistered
+        else "CHECKSUM_MISMATCH"
+        if mismatches
+        else "BLOCKED_MISSING_LOCAL_BYTES"
+        if missing
+        else "VERIFIED"
+    )
     return MertUpstreamStatus(
         repository=PINNED_MERT_REPOSITORY, revision=revision, license=PINNED_MERT_LICENSE,
         required_roles=tuple(_ROLES), local_files=files, expected_checksums=expected, missing_roles=tuple(missing), checksum_mismatches=tuple(mismatches),

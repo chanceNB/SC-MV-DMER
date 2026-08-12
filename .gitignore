@@ -28,15 +28,15 @@ Thumbs.db
 configs/local/
 
 # External data/model roots and large generated products
-data/
-datasets/
-models/
-checkpoints/
-upstream_models/
-features/
-pseudo_labels/
-runs/
-tmp/
+/data/
+/datasets/
+/models/
+/checkpoints/
+/upstream_models/
+/features/
+/pseudo_labels/
+/runs/
+/tmp/
 
 # Generated execution evidence (manifests remain tracked separately)
 artifacts/

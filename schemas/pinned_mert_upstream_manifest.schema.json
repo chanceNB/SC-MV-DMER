@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/pinned_mert_upstream_manifest.schema.json",
+  "title": "PinnedMertUpstreamManifest v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "upstream_model_id", "repository_id", "revision", "license", "loader_role", "trust_remote_code_required", "local_files_only_required", "canonical_weight_file", "other_weight_files", "files", "config_sha256", "preprocessor_sha256", "custom_code_aggregate_sha256", "weight_sha256", "snapshot_aggregate_sha256", "semantic_identity_sha256", "config_class", "model_class", "processor_class", "model_type", "architectures", "declared_sample_rate_hz", "snapshot_declared_transformers_version", "custom_code_dependencies", "environment_binding"],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "relative_path", "size_bytes", "sha256"],
+      "properties": {
+        "role": {"enum": ["MODEL_CONFIG", "PREPROCESSOR_CONFIG", "CUSTOM_CONFIGURATION_CODE", "CUSTOM_MODELING_CODE", "CANONICAL_TRANSFORMERS_WEIGHT"]},
+        "relative_path": {"enum": ["config.json", "preprocessor_config.json", "configuration_MERT.py", "modeling_MERT.py", "pytorch_model.bin"]},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "upstream_model_id": {"const": "mert-v1-95m-primary-v1"},
+    "repository_id": {"const": "m-a-p/MERT-v1-95M"},
+    "revision": {"const": "12af15fef9d0ac838c3f475bfbbf26d2060dd4f5"},
+    "license": {"const": "cc-by-nc-4.0"},
+    "loader_role": {"const": "TRANSFORMERS_AUTO_MODEL_LOCAL_PINNED"},
+    "trust_remote_code_required": {"const": true},
+    "local_files_only_required": {"const": true},
+    "canonical_weight_file": {"const": "pytorch_model.bin"},
+    "other_weight_files": {"type": "object", "additionalProperties": {"type": "string"}},
+    "files": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/file"}},
+    "config_sha256": {"$ref": "#/$defs/sha256"},
+    "preprocessor_sha256": {"$ref": "#/$defs/sha256"},
+    "custom_code_aggregate_sha256": {"$ref": "#/$defs/sha256"},
+    "weight_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_aggregate_sha256": {"$ref": "#/$defs/sha256"},
+    "semantic_identity_sha256": {"$ref": "#/$defs/sha256"},
+    "config_class": {"const": "MERTConfig"},
+    "model_class": {"const": "MERTModel"},
+    "processor_class": {"const": "Wav2Vec2FeatureExtractor"},
+    "model_type": {"const": "mert_model"},
+    "architectures": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "declared_sample_rate_hz": {"const": 24000},
+    "snapshot_declared_transformers_version": {"type": "string", "minLength": 1},
+    "custom_code_dependencies": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+    "environment_binding": {"type": "object"}
+  }
+}

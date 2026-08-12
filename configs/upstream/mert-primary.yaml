@@ -4,7 +4,12 @@ license: cc-by-nc-4.0
 required_roles:
   config: config.json
   processor: preprocessor_config.json
+  configuration_code: configuration_MERT.py
+  modeling_code: modeling_MERT.py
   weights: pytorch_model.bin
 expected_sha256:
+  config: ea2627c4c7825cd66f3c944b6b966331604c35928174e0100cd4a82829424e32
+  processor: cc5a5e4a5d3b1a758a5ed984b2eaa15bb0522d811d44a9eed82bfca4baa0dc8f
+  configuration_code: ae0ec2bab8f59c724ba9878a7c20b67210189536ea62d34a56775968e9decb03
+  modeling_code: 6c3ee73cef6f0c30ef494f88d96f891fa6925ffe663fa391b512f4b57abecc6c
   weights: a2b8b747f72c06e0595aeae41ae5473f4364938c6b39b2c58be38c48e6bd3fcd
-  # config and processor intentionally absent: no authoritative checksum is registered.
