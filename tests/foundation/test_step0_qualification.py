@@ -108,13 +108,14 @@ def test_missing_local_mert_bytes_complete_e0_but_block_e1_1_with_exact_roles() 
     assert bundle.full_catalog_blocker_deferred is True
 
 
-def test_verified_fixture_and_four_explicit_prerequisites_make_e1_1_ready() -> None:
-    """Ignoring any external prerequisite would incorrectly authorize E1.1."""
+def test_caller_forged_verified_status_remains_blocked_by_code_controlled_registry() -> None:
+    """Trusting a caller-supplied VERIFIED string would bypass formal MERT binding."""
 
     bundle = qualification(status=mert_status(verified=True))
 
-    assert bundle.e1_1_readiness is E1Readiness.READY
-    assert bundle.e1_1_blocked_roles == ()
+    assert bundle.e1_1_readiness is E1Readiness.BLOCKED
+    assert bundle.formal_execution_ready is False
+    assert "MERT_FORMAL_BINDING_FAILED" in bundle.e1_1_blocked_reasons
 
 
 @pytest.mark.parametrize("dependency", tuple(valid_prerequisites()))
@@ -137,7 +138,7 @@ def test_late_blockers_are_not_e1_1_predecessors() -> None:
         prerequisites={**valid_prerequisites(), "full_split": DependencyValidity.INVALID},
     )
 
-    assert bundle.e1_1_readiness is E1Readiness.READY
+    assert "E1_1_PREREQUISITE_NOT_VALID:full_split" not in bundle.e1_1_blocked_reasons
 
 
 def test_terminal_qualification_write_is_canonical_and_refuses_overwrite(tmp_path: Path) -> None:
@@ -194,3 +195,25 @@ def test_qualify_step_cli_reads_artifacts_only_and_writes_terminal_bundle(tmp_pa
         ]
     ) == 0
     assert json.loads(output.read_text(encoding="utf-8"))["e1_1_readiness"] == "BLOCKED"
+
+
+def test_qualify_step_cli_records_explicit_correction_supersession(tmp_path: Path) -> None:
+    """Omitting CLI correction metadata would overwrite history without an audit link."""
+
+    output = tmp_path / "qualification-v2.json"
+
+    assert main(
+        [
+            "qualify-step",
+            "--step", "0", "--mode", "debug",
+            "--probe-manifest", str(REPOSITORY_ROOT / "manifests" / "probes" / "deam-e1-real-45s-v1.json"),
+            "--mert-status", str(REPOSITORY_ROOT / "reports" / "preflight" / "mert-primary-local-status-v3.json"),
+            "--output", str(output),
+            "--supersedes", "evidence/qualifications/step-0-minimum-bootstrap.json",
+            "--correction-reason", "pinned checksum trust anchored to code-controlled registry; MERT status v3",
+        ]
+    ) == 0
+
+    stored = json.loads(output.read_text(encoding="utf-8"))
+    assert stored["supersedes"] == "evidence/qualifications/step-0-minimum-bootstrap.json"
+    assert stored["correction_reason"] == "pinned checksum trust anchored to code-controlled registry; MERT status v3"

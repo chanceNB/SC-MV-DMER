@@ -14,6 +14,8 @@ from sc_mv_dmer.features.mert_upstream import (
     PINNED_MERT_REPOSITORY,
     PINNED_MERT_REVISION,
     MertUpstreamStatus,
+    UpstreamModelBlocker,
+    bind_mert_formal,
 )
 from sc_mv_dmer.foundation.capabilities import CapabilityRole, DependencyValidity
 from sc_mv_dmer.foundation.canonical import canonical_json, sha256_canonical
@@ -169,9 +171,11 @@ def qualify_e0_minimum_bootstrap(
     blocked_reasons = external_reasons + tuple(
         f"MERT_LOCAL_ROLE_NOT_VERIFIED:{role}" for role in missing_local_roles
     )
-    if mert_status.local_verification_status != "VERIFIED":
+    try:
+        bind_mert_formal(mert_status)
+    except UpstreamModelBlocker:
         blocked_reasons += (
-            f"MERT_LOCAL_VERIFICATION_NOT_VERIFIED:{mert_status.local_verification_status}",
+            "MERT_FORMAL_BINDING_FAILED",
         )
     readiness = E1Readiness.BLOCKED if blocked_reasons else E1Readiness.READY
     payload: dict[str, Any] = {
@@ -219,7 +223,7 @@ def qualify_e0_minimum_bootstrap(
                 CapabilityRole.MERT_PROBE_REPRESENTATION,
             }
         },
-        "formal_execution_ready": False,
+        "formal_execution_ready": observation.formal_allowed and readiness is E1Readiness.READY,
         "paper_eligible": False,
         "supersedes": supersedes,
         "correction_reason": correction_reason,
@@ -239,4 +243,10 @@ def write_terminal_qualification(
     if destination.exists():
         raise QualificationWriteError(f"terminal qualification already exists: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(canonical_json(bundle.model_dump(mode="json")) + "\n", encoding="utf-8")
+    try:
+        with destination.open("x", encoding="utf-8") as artifact:
+            artifact.write(canonical_json(bundle.model_dump(mode="json")) + "\n")
+    except FileExistsError as exc:
+        raise QualificationWriteError(
+            f"terminal qualification already exists: {destination}"
+        ) from exc

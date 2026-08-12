@@ -18,7 +18,7 @@
     "e0_implementation_status": {"const": "COMPLETE"},
     "e1_1_readiness": {"enum": ["READY", "BLOCKED"]},
     "e1_1_prerequisite_validity": {"type": "object", "additionalProperties": {"enum": ["VALID", "NOT_VALID"]}},
-    "formal_execution_ready": {"const": false},
+    "formal_execution_ready": {"type": "boolean"},
     "paper_eligible": {"const": false},
     "supersedes": {"type": ["string", "null"]},
     "correction_reason": {"type": ["string", "null"]},

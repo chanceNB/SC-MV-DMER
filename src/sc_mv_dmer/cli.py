@@ -37,6 +37,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     qualify.add_argument("--probe-manifest", type=Path, required=True)
     qualify.add_argument("--mert-status", type=Path, required=True)
     qualify.add_argument("--output", type=Path, required=True)
+    qualify.add_argument("--supersedes")
+    qualify.add_argument("--correction-reason")
     args = parser.parse_args(argv)
     if args.command == "register-deam-probe":
         write_probe_manifest(build_probe(discover_deam_source(args.data_root)), args.output)
@@ -70,6 +72,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
                 CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
             },
+            supersedes=args.supersedes,
+            correction_reason=args.correction_reason,
         )
         write_terminal_qualification(bundle, args.output)
         return 0
