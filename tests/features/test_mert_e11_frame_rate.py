@@ -17,6 +17,10 @@ from sc_mv_dmer.features.mert_frame_rate import (
 from sc_mv_dmer.features.mert_e11_execution import (
     map_block_outputs_to_returned_hidden_states,
 )
+from scripts.run_e11_mert_frame_rate import (
+    _runtime_git_clean,
+    prepare_e11_artifact_paths,
+)
 
 
 def test_wrong_upstream_manifest_fails_before_execution(tmp_path: Path) -> None:
@@ -181,3 +185,37 @@ def test_runtime_tensor_identity_missing_block_fails() -> None:
             returned_hidden_states=(object(), object()),
             captured_block_outputs={5: object(), 6: object()},
         )
+
+
+def test_clean_git_preflight_does_not_consider_future_evidence_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Completed:
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+
+    calls: list[tuple[str, ...]] = []
+
+    def fake_run(command: list[str], **_kwargs: object) -> Completed:
+        calls.append(tuple(command))
+        return Completed("abc123\n" if command[-1] == "HEAD" else "")
+
+    monkeypatch.setattr("scripts.run_e11_mert_frame_rate.subprocess.run", fake_run)
+
+    assert _runtime_git_clean(tmp_path) == ("abc123", False)
+    assert calls == [
+        ("git", "rev-parse", "HEAD"),
+        ("git", "status", "--porcelain"),
+    ]
+
+
+def test_artifact_paths_are_checked_only_after_clean_preflight(tmp_path: Path) -> None:
+    paths = prepare_e11_artifact_paths(tmp_path)
+
+    assert paths["report"] == tmp_path / "reports/experiments/e1-1-mert-real-frame-rate-report.txt"
+    assert not any(path.exists() for path in paths.values())
+    paths["report"].parent.mkdir(parents=True)
+    paths["report"].write_text("terminal\n", encoding="utf-8")
+
+    with pytest.raises(E11VerificationError, match="already exists"):
+        prepare_e11_artifact_paths(tmp_path)

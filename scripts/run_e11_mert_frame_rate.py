@@ -93,6 +93,19 @@ def _runtime_git_clean(repo_root: Path) -> tuple[str, bool]:
     return commit, dirty
 
 
+def prepare_e11_artifact_paths(repo_root: Path) -> dict[str, Path]:
+    """Reserve terminal E1.1 names without creating files before preflight."""
+
+    paths = {
+        "report": repo_root / "reports/experiments/e1-1-mert-real-frame-rate-report.txt",
+        "json": repo_root / "reports/experiments/e1-1-mert-real-frame-rate.json",
+        "evidence": repo_root / "evidence/qualifications/e1-1-mert-frame-rate-verification.json",
+    }
+    if any(path.exists() for path in paths.values()):
+        raise E11VerificationError("E1.1 terminal artifact path already exists; create a new run")
+    return paths
+
+
 def _prepare_real_deam_waveform(source: Path) -> tuple[np.ndarray, dict[str, Any]]:
     info = sf.info(source)
     requested_source_frames = 45 * info.samplerate
@@ -256,18 +269,17 @@ def main() -> None:
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     arguments = parser.parse_args()
     repo_root = arguments.repo_root.resolve()
-    report_path = repo_root / "reports/experiments/e1-1-mert-real-frame-rate-report.txt"
-    json_path = repo_root / "reports/experiments/e1-1-mert-real-frame-rate.json"
-    evidence_path = repo_root / "evidence/qualifications/e1-1-mert-frame-rate-verification.json"
-    if any(path.exists() for path in (report_path, json_path, evidence_path)):
-        raise E11VerificationError("E1.1 terminal artifact path already exists; create a new run")
+    git_commit, git_dirty = _runtime_git_clean(repo_root)
+    artifact_paths = prepare_e11_artifact_paths(repo_root)
+    report_path = artifact_paths["report"]
+    json_path = artifact_paths["json"]
+    evidence_path = artifact_paths["evidence"]
 
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with report_path.open("x", encoding="utf-8") as report:
         tee_stdout = _Tee(sys.stdout, report)
         tee_stderr = _Tee(sys.stderr, report)
         with contextlib.redirect_stdout(tee_stdout), contextlib.redirect_stderr(tee_stderr):
-            git_commit, git_dirty = _runtime_git_clean(repo_root)
             manifest_path = repo_root / "manifests/upstream/mert-v1-95m-primary-v1.json"
             probe_path = repo_root / "manifests/probes/deam-e1-real-45s-v1.json"
             validate_pinned_manifest_file(manifest_path, expected_sha256=E11_MANIFEST_SHA256)
