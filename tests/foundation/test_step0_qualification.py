@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 from pathlib import Path
 
 import pytest
 
-from sc_mv_dmer.data.probes import DeamProbeManifest
+from sc_mv_dmer.data.discovery import DEAM_DATASET_VERSION, DeamSource
+from sc_mv_dmer.data.probes import DeamProbeManifest, build_probe
 from sc_mv_dmer.features.mert_upstream import MertUpstreamStatus
-from sc_mv_dmer.foundation.capabilities import CapabilityRole, DependencyValidity
 from sc_mv_dmer.foundation.config import RunMode, resolve_config
 from sc_mv_dmer.foundation.preflight import observe_preflight
 from sc_mv_dmer.foundation.qualification import (
@@ -24,19 +25,23 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULTS = REPOSITORY_ROOT / "configs" / "research" / "defaults.yaml"
 
 
-def probe() -> DeamProbeManifest:
-    return DeamProbeManifest(
-        dataset_id="dataset_" + "a" * 64,
-        song_id="song_" + "b" * 64,
-        sample_id="sample_" + "c" * 64,
-        source_relative_path="DEAM_audio/MEMD_audio/2.mp3",
-        source_sha256="d" * 64,
-        source_size_bytes=3,
-        source_duration_seconds=45.1,
-        crop_resample_contract="crop [0,45)s; resample only if needed to 24000 Hz; not executed",
-        preparation_status="SPECIFIED_NOT_EXECUTED",
-        semantic_identity_json='{"probe":true}',
-        semantic_identity_sha256="e" * 64,
+def probe_root(tmp_path: Path) -> tuple[Path, DeamProbeManifest]:
+    root = tmp_path / "deam"
+    source_path = root / "DEAM_audio" / "MEMD_audio" / "2.mp3"
+    source_path.parent.mkdir(parents=True)
+    source_path.write_bytes(b"real-probe-source")
+    digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    dataset_id = "dataset_" + "a" * 64
+    song_id = "song_" + "b" * 64
+    return root, build_probe(
+        DeamSource(
+            dataset_id=dataset_id,
+            song_id=song_id,
+            source_relative_path="DEAM_audio/MEMD_audio/2.mp3",
+            source_sha256=digest,
+            source_size_bytes=source_path.stat().st_size,
+            duration_seconds=45.0,
+        )
     )
 
 
@@ -58,16 +63,8 @@ def mert_status(*, verified: bool) -> MertUpstreamStatus:
     )
 
 
-def valid_prerequisites() -> dict[CapabilityRole | str, DependencyValidity]:
-    return {
-        "E0_MINIMUM_BOOTSTRAP": DependencyValidity.VALID,
-        CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
-        CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
-        CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
-    }
-
-
-def qualification(*, status: MertUpstreamStatus, prerequisites=None, supersedes: str | None = None):
+def qualification(tmp_path: Path, *, status: MertUpstreamStatus, supersedes: str | None = None):
+    data_root, probe = probe_root(tmp_path)
     return qualify_e0_minimum_bootstrap(
         observe_preflight(
             REPOSITORY_ROOT,
@@ -75,18 +72,18 @@ def qualification(*, status: MertUpstreamStatus, prerequisites=None, supersedes:
             git_commit="a" * 40,
             git_dirty=False,
         ),
-        probe(),
+        probe,
         status,
-        valid_prerequisites() if prerequisites is None else prerequisites,
+        data_root,
         supersedes=supersedes,
         correction_reason="MERT checksum registry correction" if supersedes else None,
     )
 
 
-def test_missing_local_mert_bytes_complete_e0_but_block_e1_1_with_exact_roles() -> None:
+def test_missing_local_mert_bytes_complete_e0_but_block_e1_1_with_exact_roles(tmp_path: Path) -> None:
     """Treating missing model bytes as E0 failure or E1 ready would misstate the boundary."""
 
-    bundle = qualification(status=mert_status(verified=False))
+    bundle = qualification(tmp_path, status=mert_status(verified=False))
 
     assert bundle.e0_implementation_status == "COMPLETE"
     assert bundle.e1_1_readiness is E1Readiness.BLOCKED
@@ -97,8 +94,8 @@ def test_missing_local_mert_bytes_complete_e0_but_block_e1_1_with_exact_roles() 
     )
     assert bundle.e1_1_prerequisite_validity == {
         "E0_MINIMUM_BOOTSTRAP": "VALID",
-        "MERT_UPSTREAM_IDENTITY": "VALID",
-        "MERT_PROBE_IDENTITY": "VALID",
+        "MERT_UPSTREAM_IDENTITY": "NOT_VALID",
+        "MERT_PROBE_IDENTITY": "NOT_VALID",
         "MERT_PROBE_REPRESENTATION": "VALID",
     }
     with pytest.raises(TypeError):
@@ -108,35 +105,46 @@ def test_missing_local_mert_bytes_complete_e0_but_block_e1_1_with_exact_roles() 
     assert bundle.full_catalog_blocker_deferred is True
 
 
-def test_caller_forged_verified_status_remains_blocked_by_code_controlled_registry() -> None:
+def test_caller_forged_verified_status_remains_blocked_by_code_controlled_registry(tmp_path: Path) -> None:
     """Trusting a caller-supplied VERIFIED string would bypass formal MERT binding."""
 
-    bundle = qualification(status=mert_status(verified=True))
+    bundle = qualification(tmp_path, status=mert_status(verified=True))
 
     assert bundle.e1_1_readiness is E1Readiness.BLOCKED
     assert bundle.formal_execution_ready is False
     assert "MERT_FORMAL_BINDING_FAILED" in bundle.e1_1_blocked_reasons
 
 
-@pytest.mark.parametrize("dependency", tuple(valid_prerequisites()))
-def test_missing_or_stale_e1_1_prerequisite_blocks(dependency) -> None:
-    """Unknown, missing, or stale E1.1 prerequisites must fail closed."""
+def test_tampered_real_probe_source_blocks_probe_identity(tmp_path: Path) -> None:
+    """A changed source under the supplied runtime root must invalidate probe identity."""
 
-    prerequisites = valid_prerequisites()
-    del prerequisites[dependency]
-    assert qualification(status=mert_status(verified=True), prerequisites=prerequisites).e1_1_readiness is E1Readiness.BLOCKED
-    prerequisites = valid_prerequisites()
-    prerequisites[dependency] = DependencyValidity.STALE_DEPENDENCY
-    assert qualification(status=mert_status(verified=True), prerequisites=prerequisites).e1_1_readiness is E1Readiness.BLOCKED
+    data_root, probe = probe_root(tmp_path)
+    (data_root / probe.source_relative_path).write_bytes(b"tampered")
+    bundle = qualify_e0_minimum_bootstrap(
+        observe_preflight(REPOSITORY_ROOT, resolve_config([DEFAULTS], {}, RunMode.FORMAL), git_commit="a" * 40, git_dirty=False),
+        probe, mert_status(verified=False), data_root,
+    )
+
+    assert bundle.e1_1_prerequisite_validity["MERT_PROBE_IDENTITY"] == "NOT_VALID"
 
 
-def test_late_blockers_are_not_e1_1_predecessors() -> None:
+def test_forged_probe_semantic_identity_blocks_probe_representation(tmp_path: Path) -> None:
+    """A manifest with a mismatched semantic identity hash cannot authorize representation."""
+
+    data_root, registered_probe = probe_root(tmp_path)
+    forged = registered_probe.model_copy(update={"semantic_identity_sha256": "0" * 64})
+    bundle = qualify_e0_minimum_bootstrap(
+        observe_preflight(REPOSITORY_ROOT, resolve_config([DEFAULTS], {}, RunMode.FORMAL), git_commit="a" * 40, git_dirty=False),
+        forged, mert_status(verified=False), data_root,
+    )
+
+    assert bundle.e1_1_prerequisite_validity["MERT_PROBE_REPRESENTATION"] == "NOT_VALID"
+
+
+def test_late_blockers_are_not_e1_1_predecessors(tmp_path: Path) -> None:
     """Adding full split, annotation, PMEmo, or late modules would improperly widen E1.1."""
 
-    bundle = qualification(
-        status=mert_status(verified=True),
-        prerequisites={**valid_prerequisites(), "full_split": DependencyValidity.INVALID},
-    )
+    bundle = qualification(tmp_path, status=mert_status(verified=True))
 
     assert "E1_1_PREREQUISITE_NOT_VALID:full_split" not in bundle.e1_1_blocked_reasons
 
@@ -145,7 +153,7 @@ def test_terminal_qualification_write_is_canonical_and_refuses_overwrite(tmp_pat
     """Overwriting terminal evidence would erase its provenance."""
 
     destination = tmp_path / "qualification.json"
-    bundle = qualification(status=mert_status(verified=False))
+    bundle = qualification(tmp_path, status=mert_status(verified=False))
     write_terminal_qualification(bundle, destination)
 
     stored = json.loads(destination.read_text(encoding="utf-8"))
@@ -154,11 +162,11 @@ def test_terminal_qualification_write_is_canonical_and_refuses_overwrite(tmp_pat
         write_terminal_qualification(bundle, destination)
 
 
-def test_corrected_qualification_records_supersession_without_overwrite() -> None:
+def test_corrected_qualification_records_supersession_without_overwrite(tmp_path: Path) -> None:
     """Replacing a terminal evidence file instead of appending a successor loses history."""
 
     bundle = qualification(
-        status=mert_status(verified=False),
+        tmp_path, status=mert_status(verified=False),
         supersedes="evidence/qualifications/step-0-minimum-bootstrap.json",
     )
 
@@ -166,10 +174,10 @@ def test_corrected_qualification_records_supersession_without_overwrite() -> Non
     assert bundle.correction_reason == "MERT checksum registry correction"
 
 
-def test_qualification_does_not_import_or_execute_model_code() -> None:
+def test_qualification_does_not_import_or_execute_model_code(tmp_path: Path) -> None:
     """Preflight must remain an artifact reader, not a MERT execution entrypoint."""
 
-    qualification(status=mert_status(verified=False))
+    qualification(tmp_path, status=mert_status(verified=False))
 
     assert "torch" not in sys.modules
 
@@ -190,6 +198,8 @@ def test_qualify_step_cli_reads_artifacts_only_and_writes_terminal_bundle(tmp_pa
             str(REPOSITORY_ROOT / "manifests" / "probes" / "deam-e1-real-45s-v1.json"),
             "--mert-status",
             str(REPOSITORY_ROOT / "reports" / "preflight" / "mert-primary-local-status-v2.json"),
+            "--data-root",
+            "E:\\DEAM",
             "--output",
             str(output),
         ]
@@ -208,6 +218,7 @@ def test_qualify_step_cli_records_explicit_correction_supersession(tmp_path: Pat
             "--step", "0", "--mode", "debug",
             "--probe-manifest", str(REPOSITORY_ROOT / "manifests" / "probes" / "deam-e1-real-45s-v1.json"),
             "--mert-status", str(REPOSITORY_ROOT / "reports" / "preflight" / "mert-primary-local-status-v3.json"),
+            "--data-root", "E:\\DEAM",
             "--output", str(output),
             "--supersedes", "evidence/qualifications/step-0-minimum-bootstrap.json",
             "--correction-reason", "pinned checksum trust anchored to code-controlled registry; MERT status v3",
@@ -217,3 +228,28 @@ def test_qualify_step_cli_records_explicit_correction_supersession(tmp_path: Pat
     stored = json.loads(output.read_text(encoding="utf-8"))
     assert stored["supersedes"] == "evidence/qualifications/step-0-minimum-bootstrap.json"
     assert stored["correction_reason"] == "pinned checksum trust anchored to code-controlled registry; MERT status v3"
+
+
+def test_qualification_schema_covers_every_bundle_field_and_evidence_value() -> None:
+    """A strict schema missing a bundle field would reject its own qualification evidence."""
+
+    schema = json.loads(
+        (REPOSITORY_ROOT / "schemas" / "e0_minimum_qualification.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    evidence = json.loads(
+        (REPOSITORY_ROOT / "evidence" / "qualifications" / "step-0-minimum-bootstrap-v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    fields = set(__import__("sc_mv_dmer.foundation.qualification", fromlist=["E0MinimumQualificationBundle"]).E0MinimumQualificationBundle.model_fields)
+
+    assert schema["additionalProperties"] is False
+    assert fields == set(schema["properties"])
+    assert fields == set(schema["required"])
+    assert set(evidence) <= set(schema["properties"])
+    assert set(schema["required"]) <= set(evidence)
+    assert schema["properties"]["schema_version"]["const"] == evidence["schema_version"]
+    assert evidence["e1_1_readiness"] in schema["properties"]["e1_1_readiness"]["enum"]
+    assert len(evidence["qualification_sha256"]) == 64

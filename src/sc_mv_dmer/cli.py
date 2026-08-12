@@ -9,7 +9,6 @@ from sc_mv_dmer import app_name
 from sc_mv_dmer.data.discovery import discover_deam_source
 from sc_mv_dmer.data.probes import build_probe, write_probe_manifest
 from sc_mv_dmer.features.mert_upstream import discover_mert_local
-from sc_mv_dmer.foundation.capabilities import CapabilityRole, DependencyValidity
 from sc_mv_dmer.foundation.config import RunMode, resolve_config
 from sc_mv_dmer.foundation.preflight import observe_preflight
 from sc_mv_dmer.foundation.qualification import (
@@ -36,6 +35,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     qualify.add_argument("--mode", choices=(RunMode.FORMAL.value, RunMode.DEBUG.value), required=True)
     qualify.add_argument("--probe-manifest", type=Path, required=True)
     qualify.add_argument("--mert-status", type=Path, required=True)
+    qualify.add_argument("--data-root", type=Path, required=True)
     qualify.add_argument("--output", type=Path, required=True)
     qualify.add_argument("--supersedes")
     qualify.add_argument("--correction-reason")
@@ -66,12 +66,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             observation,
             load_probe_manifest(args.probe_manifest),
             load_mert_status(args.mert_status),
-            {
-                "E0_MINIMUM_BOOTSTRAP": DependencyValidity.VALID,
-                CapabilityRole.MERT_UPSTREAM_IDENTITY: DependencyValidity.VALID,
-                CapabilityRole.MERT_PROBE_IDENTITY: DependencyValidity.VALID,
-                CapabilityRole.MERT_PROBE_REPRESENTATION: DependencyValidity.VALID,
-            },
+            args.data_root,
             supersedes=args.supersedes,
             correction_reason=args.correction_reason,
         )

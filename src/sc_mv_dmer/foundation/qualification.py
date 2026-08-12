@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
-from sc_mv_dmer.data.probes import DeamProbeManifest
+from sc_mv_dmer.data.discovery import DEAM_DATASET_VERSION
+from sc_mv_dmer.data.probes import (
+    PROBE_RULE_VERSION,
+    DeamProbeManifest,
+)
 from sc_mv_dmer.features.mert_upstream import (
     PINNED_MERT_REPOSITORY,
     PINNED_MERT_REVISION,
@@ -17,12 +22,12 @@ from sc_mv_dmer.features.mert_upstream import (
     UpstreamModelBlocker,
     bind_mert_formal,
 )
-from sc_mv_dmer.foundation.capabilities import CapabilityRole, DependencyValidity
 from sc_mv_dmer.foundation.canonical import canonical_json, sha256_canonical
 from pydantic import field_validator
 
 from sc_mv_dmer.foundation.manifests import FrozenDict, ImmutableRecord
 from sc_mv_dmer.foundation.preflight import PreflightObservation
+from sc_mv_dmer.foundation.identity import stable_id
 from sc_mv_dmer.foundation.stages import (
     FROZEN_CONTRACT_BLOCKER,
     audit_stage_authority,
@@ -108,6 +113,83 @@ def _assert_pinned_mert_identity(status: MertUpstreamStatus) -> None:
         raise ValueError("MERT status does not match the pinned repository/revision identity")
 
 
+def _probe_identity_is_valid(probe: DeamProbeManifest, data_root: Path) -> bool:
+    relative_path = Path(probe.source_relative_path)
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        return False
+    match = re.fullmatch(r"DEAM_audio/MEMD_audio/(\d+)\.mp3", probe.source_relative_path)
+    if match is None:
+        return False
+    dataset_id = stable_id("dataset", ("DEAM", DEAM_DATASET_VERSION))
+    song_id = stable_id("song", (dataset_id, match.group(1)))
+    sample_id = stable_id("sample", (song_id, PROBE_RULE_VERSION, "0", "45"))
+    source = Path(data_root).resolve() / relative_path
+    if not source.is_file() or _file_sha256(source) != probe.source_sha256:
+        return False
+    return (
+        probe.dataset_id == dataset_id
+        and probe.song_id == song_id
+        and probe.sample_id == sample_id
+    )
+
+
+def _probe_representation_is_valid(probe: DeamProbeManifest) -> bool:
+    try:
+        semantic = json.loads(probe.semantic_identity_json)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(semantic, dict) or sha256_canonical(semantic) != probe.semantic_identity_sha256:
+        return False
+    return (
+        semantic
+        == {
+            "dataset_id": probe.dataset_id,
+            "song_id": probe.song_id,
+            "source_relative_path": probe.source_relative_path,
+            "source_sha256": probe.source_sha256,
+            "probe_seconds": 45,
+            "target_sample_rate_hz": 24_000,
+            "target_sample_count": 1_080_000,
+            "rule_version": PROBE_RULE_VERSION,
+        }
+        and probe.probe_seconds == 45
+        and probe.target_sample_rate_hz == 24_000
+        and probe.target_sample_count == 1_080_000
+        and probe.preparation_status == "SPECIFIED_NOT_EXECUTED"
+    )
+
+
+def _derive_e1_1_prerequisite_validity(
+    observation: PreflightObservation,
+    probe: DeamProbeManifest,
+    mert_status: MertUpstreamStatus,
+    data_root: Path,
+) -> dict[str, str]:
+    """Derive the four E1.1 prerequisites from observed artifacts, never caller input."""
+
+    mert_valid = True
+    try:
+        bind_mert_formal(mert_status)
+    except UpstreamModelBlocker:
+        mert_valid = False
+    return {
+        "E0_MINIMUM_BOOTSTRAP": "VALID"
+        if observation.formal_allowed
+        and observation.config_schema_version
+        and observation.research_spec_version
+        and observation.semantic_config_hash
+        and observation.resolved_config_hash
+        else "NOT_VALID",
+        "MERT_UPSTREAM_IDENTITY": "VALID" if mert_valid else "NOT_VALID",
+        "MERT_PROBE_IDENTITY": "VALID"
+        if _probe_identity_is_valid(probe, data_root)
+        else "NOT_VALID",
+        "MERT_PROBE_REPRESENTATION": "VALID"
+        if _probe_representation_is_valid(probe)
+        else "NOT_VALID",
+    }
+
+
 def load_probe_manifest(path: Path) -> DeamProbeManifest:
     """Load one previously registered probe manifest without touching its source audio."""
 
@@ -126,19 +208,17 @@ def load_mert_status(path: Path) -> MertUpstreamStatus:
     )
 
 
-def _external_prerequisite_reasons(
-    prerequisites: Mapping[CapabilityRole | str, object],
-) -> tuple[str, ...]:
-    required: tuple[CapabilityRole | str, ...] = (
+def _external_prerequisite_reasons(prerequisites: Mapping[str, str]) -> tuple[str, ...]:
+    required = (
         "E0_MINIMUM_BOOTSTRAP",
-        CapabilityRole.MERT_UPSTREAM_IDENTITY,
-        CapabilityRole.MERT_PROBE_IDENTITY,
-        CapabilityRole.MERT_PROBE_REPRESENTATION,
+        "MERT_UPSTREAM_IDENTITY",
+        "MERT_PROBE_IDENTITY",
+        "MERT_PROBE_REPRESENTATION",
     )
     return tuple(
-        f"E1_1_PREREQUISITE_NOT_VALID:{dependency if isinstance(dependency, str) else dependency.value}"
+        f"E1_1_PREREQUISITE_NOT_VALID:{dependency}"
         for dependency in required
-        if prerequisites.get(dependency) is not DependencyValidity.VALID
+        if prerequisites.get(dependency) != "VALID"
     )
 
 
@@ -146,7 +226,7 @@ def qualify_e0_minimum_bootstrap(
     observation: PreflightObservation,
     probe: DeamProbeManifest,
     mert_status: MertUpstreamStatus,
-    e1_1_prerequisite_validity: Mapping[CapabilityRole | str, object],
+    data_root: Path,
     *,
     supersedes: str | None = None,
     correction_reason: str | None = None,
@@ -166,7 +246,10 @@ def qualify_e0_minimum_bootstrap(
         load_stage_authority_catalog(root / "configs" / "catalog" / "stages.yaml"),
         required_stage_ids,
     )
-    external_reasons = _external_prerequisite_reasons(e1_1_prerequisite_validity)
+    prerequisite_validity = _derive_e1_1_prerequisite_validity(
+        observation, probe, mert_status, data_root
+    )
+    external_reasons = _external_prerequisite_reasons(prerequisite_validity)
     missing_local_roles = tuple(mert_status.missing_roles)
     blocked_reasons = external_reasons + tuple(
         f"MERT_LOCAL_ROLE_NOT_VERIFIED:{role}" for role in missing_local_roles
@@ -210,19 +293,7 @@ def qualify_e0_minimum_bootstrap(
         "e1_1_readiness": readiness,
         "e1_1_blocked_roles": missing_local_roles,
         "e1_1_blocked_reasons": blocked_reasons,
-        "e1_1_prerequisite_validity": {
-            dependency if isinstance(dependency, str) else dependency.value: (
-                validity.value if isinstance(validity, DependencyValidity) else "NOT_VALID"
-            )
-            for dependency, validity in e1_1_prerequisite_validity.items()
-            if dependency
-            in {
-                "E0_MINIMUM_BOOTSTRAP",
-                CapabilityRole.MERT_UPSTREAM_IDENTITY,
-                CapabilityRole.MERT_PROBE_IDENTITY,
-                CapabilityRole.MERT_PROBE_REPRESENTATION,
-            }
-        },
+        "e1_1_prerequisite_validity": prerequisite_validity,
         "formal_execution_ready": observation.formal_allowed and readiness is E1Readiness.READY,
         "paper_eligible": False,
         "supersedes": supersedes,
@@ -240,8 +311,6 @@ def write_terminal_qualification(
     """Write a new terminal artifact once; corrections require a different path/version."""
 
     destination = Path(destination)
-    if destination.exists():
-        raise QualificationWriteError(f"terminal qualification already exists: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
     try:
         with destination.open("x", encoding="utf-8") as artifact:
