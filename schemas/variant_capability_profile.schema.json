@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/variant_capability_profile.schema.json",
+  "title": "VariantCapabilityProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "variant_id", "variant_version", "role_map", "forbidden_roles"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "variant_id": {"type": "string", "minLength": 1},
+    "variant_version": {"type": "string", "minLength": 1},
+    "role_map": {
+      "type": "object",
+      "propertyNames": {"enum": ["MERT_PROBE_IDENTITY", "MERT_PROBE_REPRESENTATION", "MERT_REAL_FORWARD", "MERT_OUTPUT_DIMENSION_DERIVATION", "TIMESNET_PERIOD_DERIVATION", "RG_01_EVALUATION", "SENSOR", "MARKOV", "FUSION", "QWEN", "LM_HEAD", "PARSER", "GENERATION", "COT", "EVENT_INJECTION", "TRAINING", "OPTIMIZER"]},
+      "additionalProperties": {"enum": ["PRESENT", "NOT_APPLICABLE_BY_DESIGN"]}
+    },
+    "forbidden_roles": {"type": "array", "items": {"type": "string"}}
+  }
+}

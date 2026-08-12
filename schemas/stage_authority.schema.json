@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/stage_authority.schema.json",
+  "title": "StageAuthorityRow",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stage_id", "variant_id", "phase", "execution_role", "active_roles", "forbidden_roles"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "stage_id": {"type": "string", "minLength": 1},
+    "variant_id": {"type": "string", "minLength": 1},
+    "phase": {"enum": ["BOOTSTRAP", "MEASUREMENT"]},
+    "execution_role": {"enum": ["INFERENCE", "TRAINING"]},
+    "active_roles": {"type": "array", "items": {"type": "string"}},
+    "forbidden_roles": {"type": "array", "items": {"type": "string"}},
+    "required_predecessor_stage_ids": {"type": "array", "items": {"type": "string"}},
+    "required_identity_roles": {"type": "array", "items": {"type": "string"}}
+  }
+}

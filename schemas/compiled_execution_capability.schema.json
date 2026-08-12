@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/compiled_execution_capability.schema.json",
+  "title": "CompiledExecutionCapabilityManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "variant_id", "variant_version", "context", "role_capabilities", "forbidden_roles"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "variant_id": {"type": "string", "minLength": 1},
+    "variant_version": {"type": "string", "minLength": 1},
+    "context": {"$ref": "#/$defs/context"},
+    "role_capabilities": {
+      "type": "object",
+      "propertyNames": {"enum": ["MERT_PROBE_IDENTITY", "MERT_PROBE_REPRESENTATION", "MERT_REAL_FORWARD", "MERT_OUTPUT_DIMENSION_DERIVATION", "TIMESNET_PERIOD_DERIVATION", "RG_01_EVALUATION", "SENSOR", "MARKOV", "FUSION", "QWEN", "LM_HEAD", "PARSER", "GENERATION", "COT", "EVENT_INJECTION", "TRAINING", "OPTIMIZER"]},
+      "additionalProperties": {"$ref": "#/$defs/roleCapability"}
+    },
+    "forbidden_roles": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_id", "phase", "execution_role", "requested_roles"],
+      "properties": {
+        "stage_id": {"type": "string", "minLength": 1},
+        "phase": {"enum": ["BOOTSTRAP", "MEASUREMENT"]},
+        "execution_role": {"enum": ["INFERENCE", "TRAINING"]},
+        "requested_roles": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "roleCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scientific_existence", "activation", "readiness"],
+      "properties": {
+        "scientific_existence": {"enum": ["PRESENT", "NOT_APPLICABLE_BY_DESIGN"]},
+        "activation": {"enum": ["ACTIVE", "INACTIVE", "NOT_APPLICABLE"]},
+        "readiness": {"anyOf": [{"enum": ["READY", "DEPENDENCY_BLOCKED", "GATE_BLOCKED", "STALE_DEPENDENCY", "INVALID"]}, {"type": "null"}]}
+      }
+    }
+  }
+}
