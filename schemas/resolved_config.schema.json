@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/resolved_config.schema.json",
+  "title": "SC-MV-DMER resolved configuration snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "resolved_config",
+    "canonical_json",
+    "semantic_config_hash",
+    "resolved_config_hash",
+    "config_schema_version",
+    "research_spec_version",
+    "source_provenance",
+    "cli_overrides",
+    "semantic_diff",
+    "run_mode",
+    "paper_eligible"
+  ],
+  "properties": {
+    "resolved_config": {"type": "object"},
+    "canonical_json": {"type": "string"},
+    "semantic_config_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "resolved_config_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "config_schema_version": {"type": "string", "minLength": 1},
+    "research_spec_version": {"type": "string", "minLength": 1},
+    "source_provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["logical_path", "sha256", "merge_order"],
+        "properties": {
+          "logical_path": {"type": "string", "pattern": "^[^\\\\]+$"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "merge_order": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "cli_overrides": {"type": "object"},
+    "semantic_diff": {"type": "object"},
+    "run_mode": {"enum": ["formal", "debug"]},
+    "paper_eligible": {"type": "boolean"}
+  }
+}

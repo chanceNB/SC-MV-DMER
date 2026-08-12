@@ -1,0 +1,38 @@
+# This file is the machine-executable mapping of docs/research/RESEARCH_SPEC.md.
+# It is not an independent source of research truth. Changes require the governed
+# DECISIONS.md -> RESEARCH_SPEC.md -> config/schema version-bump sequence.
+config_schema_version: "1.0"
+research_spec_version: "1.0"
+dataset:
+  dataset_id: "deam-v1"
+  dataset_version: "DEAM-2019"
+  data_root: "D:/SC-MV-DMER-data"
+  split_manifest_id: "primary-song-80-10-10-v1"
+  split_manifest_sha256: "pending-frozen-manifest"
+features:
+  definition_version: "SC-MV-DMER-features-v1"
+  time_grid_hz: 2
+model:
+  architecture: "SC-MV-DMER-7B"
+  upstream_model_id: "mert-v1"
+markov:
+  shared_A: true
+  shared_pi: true
+sensor:
+  enabled: true
+events:
+  enabled: true
+loss:
+  definition_version: "LOR-FBC-3R+++"
+evaluation:
+  protocol_version: "MEGPC-FBC-3R++++"
+experiment:
+  overlay_id: "A1_FULL_7B-v1"
+  seed: 52826381
+runtime:
+  device: "cuda:0"
+  batch_size: 4
+  gradient_accumulation: 4
+  num_workers: 4
+  precision: "bf16"
+  checkpointing: true
