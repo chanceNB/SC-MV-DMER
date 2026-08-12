@@ -88,3 +88,11 @@ checksum-authentication correction reason and remains blocked. Probe and status
 writes now use exclusive creation, avoiding exists-then-write TOCTOU.
 
 Focused tests: 8 passed; full suite: 65 passed; `git diff --check` exited 0.
+
+## Review fix round 2
+
+Formal binding independently recomputes and validates the complete pinned
+repository/revision/license identity, expected checksum role map, actual local
+role map, per-role hash equality, derived missing/mismatch state, and upstream
+identity. A caller-constructed `VERIFIED` status with empty inventories now
+fails the formal boundary.

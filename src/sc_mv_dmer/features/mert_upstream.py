@@ -66,10 +66,23 @@ def discover_mert_local(local_root: Path | None, *, revision: str = PINNED_MERT_
 
 
 def bind_mert_formal(status: MertUpstreamStatus) -> MertUpstreamStatus:
-    if status.local_verification_status == "EXPECTED_CHECKSUMS_UNREGISTERED":
-        raise UpstreamModelBlocker("expected checksums are unregistered")
-    if status.missing_roles:
-        raise UpstreamModelBlocker("missing required local MERT roles: " + ", ".join(status.missing_roles))
-    if status.checksum_mismatches:
-        raise UpstreamModelBlocker("checksum mismatch for roles: " + ", ".join(status.checksum_mismatches))
+    expected_roles = set(_ROLES)
+    recomputed_identity = sha256_canonical({"repository": PINNED_MERT_REPOSITORY, "revision": PINNED_MERT_REVISION, "license": PINNED_MERT_LICENSE, "expected_checksums": status.expected_checksums})
+    if (
+        status.repository != PINNED_MERT_REPOSITORY
+        or status.revision != PINNED_MERT_REVISION
+        or status.license != PINNED_MERT_LICENSE
+        or set(status.required_roles) != expected_roles
+        or set(status.expected_checksums) != expected_roles
+        or set(status.local_files) != expected_roles
+        or status.missing_roles
+        or status.checksum_mismatches
+        or status.local_verification_status != "VERIFIED"
+        or status.upstream_identity != recomputed_identity
+        or any(
+            status.local_files[role].get("sha256") != status.expected_checksums[role]
+            for role in expected_roles
+        )
+    ):
+        raise UpstreamModelBlocker("formal verification failed: expected checksum inventory is incomplete or unauthenticated")
     return status

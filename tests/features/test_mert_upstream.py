@@ -4,6 +4,7 @@ import pytest
 import hashlib
 
 from sc_mv_dmer.features.mert_upstream import (
+    MertUpstreamStatus,
     PINNED_MERT_REPOSITORY,
     PINNED_MERT_REVISION,
     UpstreamModelBlocker,
@@ -54,3 +55,20 @@ def test_same_named_local_files_fail_closed_without_registered_expected_checksum
     assert mismatch.local_verification_status == "CHECKSUM_MISMATCH"
     with pytest.raises(UpstreamModelBlocker, match="checksum"):
         bind_mert_formal(mismatch)
+
+
+def test_formal_bind_rejects_caller_forged_verified_status():
+    forged = MertUpstreamStatus(
+        repository=PINNED_MERT_REPOSITORY,
+        revision=PINNED_MERT_REVISION,
+        license="cc-by-nc-4.0",
+        required_roles=("config", "processor", "weights"),
+        local_files={},
+        expected_checksums={},
+        missing_roles=(),
+        checksum_mismatches=(),
+        local_verification_status="VERIFIED",
+        upstream_identity="0" * 64,
+    )
+    with pytest.raises(UpstreamModelBlocker, match="formal verification"):
+        bind_mert_formal(forged)
