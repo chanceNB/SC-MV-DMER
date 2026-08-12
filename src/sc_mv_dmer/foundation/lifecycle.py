@@ -155,10 +155,17 @@ class LifecycleStore:
         self._terminal_run_ids.add(run_id)
 
 
-def start_run(spec: RunSpec, lifecycle_store: LifecycleStore) -> ActiveRun:
-    """Register a new active handle in an explicit lifecycle store."""
+_PROCESS_LIFECYCLE_STORE = LifecycleStore()
 
-    return lifecycle_store.start(spec)
+
+def start_run(
+    spec: RunSpec,
+    *,
+    lifecycle_store: LifecycleStore | None = None,
+) -> ActiveRun:
+    """Register a run in the process store or an explicitly supplied store."""
+
+    return (lifecycle_store or _PROCESS_LIFECYCLE_STORE).start(spec)
 
 
 def finalize_run(

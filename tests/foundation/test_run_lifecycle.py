@@ -51,7 +51,7 @@ def run_spec(run_id: str = "run-001", **changes: object) -> RunSpec:
 
 
 def test_terminal_run_cannot_reopen_or_finalize_twice() -> None:
-    active = start_run(run_spec(), LifecycleStore())
+    active = start_run(run_spec(), lifecycle_store=LifecycleStore())
     manifest = finalize_run(
         active,
         TerminalState.SUCCEEDED,
@@ -66,14 +66,24 @@ def test_terminal_run_cannot_reopen_or_finalize_twice() -> None:
 
 def test_lifecycle_store_rejects_duplicate_run_identity_before_two_handles_can_finalize() -> None:
     store = LifecycleStore()
-    first = start_run(run_spec(), store)
+    first = start_run(run_spec(), lifecycle_store=store)
 
     with pytest.raises(DuplicateRecordError, match="run ID"):
-        start_run(run_spec(), store)
+        start_run(run_spec(), lifecycle_store=store)
 
     finalize_run(first, TerminalState.SUCCEEDED, terminal_reason="completed fixture")
     with pytest.raises(DuplicateRecordError, match="run ID"):
-        start_run(run_spec(), store)
+        start_run(run_spec(), lifecycle_store=store)
+
+
+def test_start_run_single_argument_facade_uses_default_store_and_rejects_duplicates() -> None:
+    spec = run_spec("facade-run-001")
+    active = start_run(spec)
+
+    with pytest.raises(DuplicateRecordError, match="run ID"):
+        start_run(spec)
+
+    finalize_run(active, TerminalState.SUCCEEDED, terminal_reason="completed fixture")
 
 
 def test_terminal_state_enum_excludes_running() -> None:
@@ -112,7 +122,7 @@ def test_finalized_nested_values_are_not_mutable_through_aliases() -> None:
     checkpoints = [artifact("checkpoint")]
     artifacts = [artifact("output")]
     manifest = finalize_run(
-        start_run(run_spec(), LifecycleStore()),
+        start_run(run_spec(), lifecycle_store=LifecycleStore()),
         TerminalState.SUCCEEDED,
         terminal_reason="completed expected fixture work",
         metrics=metrics,
@@ -133,7 +143,7 @@ def test_finalized_nested_values_are_not_mutable_through_aliases() -> None:
 
 def test_immutable_records_remain_json_serializable() -> None:
     manifest = finalize_run(
-        start_run(run_spec(), LifecycleStore()),
+        start_run(run_spec(), lifecycle_store=LifecycleStore()),
         TerminalState.SUCCEEDED,
         terminal_reason="completed expected fixture work",
         metrics={"scores": {"accuracy": 0.75}},

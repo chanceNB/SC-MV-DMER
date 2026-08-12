@@ -77,6 +77,28 @@ Verification after the fixes:
 37 passed in 0.25s
 ```
 
+## Fix round 2/5
+
+The frozen public `start_run(spec) -> ActiveRun` interface was restored with a
+test-first compatibility fix. The new single-argument test went RED with:
+
+```text
+TypeError: start_run() missing 1 required positional argument: 'lifecycle_store'
+```
+
+GREEN makes `lifecycle_store` an optional keyword-only injection point. The
+single-argument facade uses a clear process-level lifecycle store, which still
+rejects duplicate active and terminal IDs. Tests retain an explicitly supplied
+`LifecycleStore` for isolation and independently prove its duplicate rejection.
+
+```text
+.venv\\Scripts\\python.exe -m pytest tests\\foundation\\test_run_lifecycle.py tests\\foundation\\test_effective_validity.py -q
+21 passed in 0.23s
+
+.venv\\Scripts\\python.exe -m pytest -q
+38 passed in 0.24s
+```
+
 ## Files
 
 - `src/sc_mv_dmer/foundation/manifests.py`
