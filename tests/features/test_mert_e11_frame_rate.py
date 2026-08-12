@@ -18,6 +18,7 @@ from sc_mv_dmer.features.mert_e11_execution import (
     map_block_outputs_to_returned_hidden_states,
 )
 from scripts.run_e11_mert_frame_rate import (
+    _decode_exact_source_segment,
     _runtime_git_clean,
     prepare_e11_artifact_paths,
 )
@@ -219,3 +220,25 @@ def test_artifact_paths_are_checked_only_after_clean_preflight(tmp_path: Path) -
 
     with pytest.raises(E11VerificationError, match="already exists"):
         prepare_e11_artifact_paths(tmp_path)
+
+
+def test_exact_source_segment_seeks_then_reads_requested_frame_count() -> None:
+    class Decoder:
+        def __init__(self) -> None:
+            self.calls: list[tuple[object, ...]] = []
+
+        def seek(self, frame: int) -> int:
+            self.calls.append(("seek", frame))
+            return frame
+
+        def read(self, *, frames: int, dtype: str, always_2d: bool) -> str:
+            self.calls.append(("read", frames, dtype, always_2d))
+            return "decoded"
+
+    decoder = Decoder()
+
+    assert _decode_exact_source_segment(decoder, 1_984_500) == "decoded"
+    assert decoder.calls == [
+        ("seek", 0),
+        ("read", 1_984_500, "float32", True),
+    ]

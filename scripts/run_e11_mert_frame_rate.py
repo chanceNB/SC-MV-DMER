@@ -106,16 +106,18 @@ def prepare_e11_artifact_paths(repo_root: Path) -> dict[str, Path]:
     return paths
 
 
+def _decode_exact_source_segment(decoder: Any, frame_count: int) -> Any:
+    """Decode the registered [0,45) source segment without fill/pad behavior."""
+
+    decoder.seek(0)
+    return decoder.read(frames=frame_count, dtype="float32", always_2d=True)
+
+
 def _prepare_real_deam_waveform(source: Path) -> tuple[np.ndarray, dict[str, Any]]:
     info = sf.info(source)
     requested_source_frames = 45 * info.samplerate
     with sf.SoundFile(source) as decoder:
-        decoded = decoder.read(
-            frames=requested_source_frames,
-            start=0,
-            dtype="float32",
-            always_2d=True,
-        )
+        decoded = _decode_exact_source_segment(decoder, requested_source_frames)
     if decoded.shape[0] != requested_source_frames:
         raise E11VerificationError("decoder cannot provide the registered [0,45) source segment")
     mono = decoded.mean(axis=1, dtype=np.float32)
