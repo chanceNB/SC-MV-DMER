@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/invalidation_record.schema.json",
+  "title": "InvalidationRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_id", "node_id", "reason", "invalidated_by", "recorded_at"],
+  "properties": {
+    "record_id": {"type": "string", "minLength": 1},
+    "node_id": {"type": "string", "minLength": 1},
+    "reason": {"type": "string", "minLength": 1},
+    "invalidated_by": {"type": "string", "minLength": 1},
+    "recorded_at": {"type": "string", "format": "date-time"}
+  }
+}

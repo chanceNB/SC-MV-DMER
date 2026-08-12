@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/gate_evaluation.schema.json",
+  "title": "GateEvaluationAttempt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evaluation_id", "gate_version", "attempt_number", "definition_id", "verdict", "authority_kind", "authority_metadata", "evidence_commit", "evidence_bundle_sha256", "source_run_ids", "predecessor_dependencies"],
+  "properties": {
+    "evaluation_id": {"type": "string", "minLength": 1},
+    "gate_version": {"type": "string", "minLength": 1},
+    "attempt_number": {"type": "integer", "minimum": 1},
+    "definition_id": {"type": "string", "minLength": 1},
+    "verdict": {"enum": ["PASS", "FAIL", "BLOCKED", "INSUFFICIENT_EVIDENCE"]},
+    "authority_kind": {"enum": ["automatic", "manual"]},
+    "authority_metadata": {"type": "object"},
+    "evidence_commit": {"type": "string", "minLength": 7},
+    "evidence_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_run_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "predecessor_dependencies": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  }
+}

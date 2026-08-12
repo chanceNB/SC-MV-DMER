@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/run_manifest.schema.json",
+  "title": "RunManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec", "terminal_state", "terminal_reason", "metrics", "checkpoints", "artifacts", "completed_at"],
+  "properties": {
+    "spec": {"$ref": "run_spec.schema.json"},
+    "terminal_state": {"enum": ["SUCCEEDED", "FAILED", "INTERRUPTED"]},
+    "terminal_reason": {"type": "string", "minLength": 1},
+    "metrics": {"type": "object"},
+    "checkpoints": {"type": "array", "items": {"$ref": "run_spec.schema.json#/$defs/artifactRef"}},
+    "artifacts": {"type": "array", "items": {"$ref": "run_spec.schema.json#/$defs/artifactRef"}},
+    "completed_at": {"type": "string", "format": "date-time"}
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/run_spec.schema.json",
+  "title": "RunSpec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "run_mode", "semantic_config_hash", "resolved_config_hash", "config_snapshot_ref", "config_provenance_ref", "git_commit", "git_dirty", "data_ref", "split_ref", "seed", "environment", "launch_command", "schema_versions"],
+  "properties": {
+    "run_id": {"type": "string", "minLength": 1},
+    "run_mode": {"type": "string", "minLength": 1},
+    "semantic_config_hash": {"$ref": "#/$defs/sha256"},
+    "resolved_config_hash": {"$ref": "#/$defs/sha256"},
+    "config_snapshot_ref": {"$ref": "#/$defs/artifactRef"},
+    "config_provenance_ref": {"$ref": "#/$defs/artifactRef"},
+    "git_commit": {"type": "string", "minLength": 7},
+    "git_dirty": {"type": "boolean"},
+    "data_ref": {"$ref": "#/$defs/artifactRef"},
+    "split_ref": {"$ref": "#/$defs/artifactRef"},
+    "feature_cache_ref": {"$ref": "#/$defs/artifactRef"},
+    "seed": {"type": "integer"},
+    "environment": {"type": "object"},
+    "launch_command": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "parent_run_id": {"type": "string", "minLength": 1},
+    "continuation_of_run_id": {"type": "string", "minLength": 1},
+    "resume_checkpoint_ref": {"$ref": "#/$defs/artifactRef"},
+    "schema_versions": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "kind", "sha256"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "logical_path": {"type": "string"},
+        "version": {"type": "string"}
+      }
+    }
+  }
+}
