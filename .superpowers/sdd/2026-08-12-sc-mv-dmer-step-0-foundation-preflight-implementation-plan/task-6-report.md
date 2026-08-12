@@ -33,3 +33,10 @@
 - E1.1 consumes exactly the E0 predecessor and upstream/probe/probe-representation prerequisites. Full split, annotation, PMEmo, Sensor, Qwen, and CoT remain outside this predecessor set.
 - Terminal qualification writes use atomic exclusive creation. Corrections are separate paths with explicit supersession metadata.
 - A caller-provided MERT status is independently subjected to code-controlled formal binding; forged `VERIFIED` cannot make E1.1 ready.
+
+## Review fix round 1
+
+- RED: the strict schema omitted fields emitted by the qualification bundle, and `qualify-step` supplied a hard-coded four-`VALID` mapping. New tests failed for missing schema fields and for source/manifest verification that the old production API could not perform.
+- GREEN: `./.venv/Scripts/python.exe -m pytest tests/foundation/test_formal_preflight.py tests/foundation/test_step0_qualification.py -q` passed after all prerequisite validity became derived from observed input only.
+- `0b3891d7f9d824e1f1575d8d1f4af345c70207de` records the code fix. Schema properties and required fields now exactly match the immutable bundle model, with evidence key/const/enum/hash checks in focused tests.
+- `step-0-minimum-bootstrap-v3.json` is append-only, supersedes v2, and was generated from clean formal observation plus `E:\DEAM` source checksum revalidation and MERT status v3. Its current status remains `COMPLETE/BLOCKED/false/false`; upstream MERT identity is `NOT_VALID` because the code-controlled registry is incomplete.

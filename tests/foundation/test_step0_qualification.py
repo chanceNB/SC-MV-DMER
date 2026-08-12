@@ -239,7 +239,7 @@ def test_qualification_schema_covers_every_bundle_field_and_evidence_value() -> 
         )
     )
     evidence = json.loads(
-        (REPOSITORY_ROOT / "evidence" / "qualifications" / "step-0-minimum-bootstrap-v2.json").read_text(
+        (REPOSITORY_ROOT / "evidence" / "qualifications" / "step-0-minimum-bootstrap-v3.json").read_text(
             encoding="utf-8"
         )
     )
@@ -252,4 +252,9 @@ def test_qualification_schema_covers_every_bundle_field_and_evidence_value() -> 
     assert set(schema["required"]) <= set(evidence)
     assert schema["properties"]["schema_version"]["const"] == evidence["schema_version"]
     assert evidence["e1_1_readiness"] in schema["properties"]["e1_1_readiness"]["enum"]
-    assert len(evidence["qualification_sha256"]) == 64
+    for key in (
+        "semantic_config_hash", "resolved_config_hash", "variants_catalog_sha256",
+        "stages_catalog_sha256", "probe_manifest_sha256", "source_sha256",
+        "mert_upstream_identity", "qualification_sha256",
+    ):
+        assert len(evidence[key]) == 64
