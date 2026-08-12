@@ -1,0 +1,53 @@
+Explicitly passing a `revision` is encouraged when loading a configuration with custom code to ensure no malicious code has been contributed in a newer revision.
+Explicitly passing a `revision` is encouraged when loading a model with custom code to ensure no malicious code has been contributed in a newer revision.
+E:\SC-MV-DMER\.worktrees\e0-minimum-bootstrap\.venv\lib\site-packages\torch\nn\utils\weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+=== MERT E1.1 REAL FRAME-RATE VERIFICATION ===
+repository_id=m-a-p/MERT-v1-95M
+revision=12af15fef9d0ac838c3f475bfbbf26d2060dd4f5
+snapshot_aggregate_sha256=07269a149bcedb98f6c0cd9bc11719c4e0571f06e4fe41599536cd180812b80c
+git_commit=1b58f3fe677a97f4cc0c16f7588df9249ed89b25
+transformers_version=4.24.0
+torch_version=2.11.0+cu128
+device=NVIDIA GeForce RTX 5060 Ti
+--- P1 ---
+preprocessing={"construction":"numpy.zeros(target_sample_count, dtype=float32)","output_finite":true,"probe_source":"canonical deterministic zero waveform"}
+probe_id=P1_CANONICAL_EXACT_LENGTH
+probe_type=P1_CANONICAL
+input_sample_rate=24000
+input_sample_count=1080000
+input_duration_seconds=45.0
+input_tensor_shape=(1, 1080000)
+hidden_states_count=13
+research_layer_5_actual_index=5
+research_layer_5_block_identity=encoder.layers[4] / transformer_block_5
+research_layer_6_actual_index=6
+research_layer_6_block_identity=encoder.layers[5] / transformer_block_6
+layer5_shape=(1, 3374, 768)
+layer6_shape=(1, 3374, 768)
+observed_frame_count = T_raw = 3374
+hidden_dimension = D = 768
+observed_fps = T_raw / 45.0 = 3374 / 45.0 = 74.97777777777777 Hz
+layer5_finite=True
+layer6_finite=True
+--- P2 ---
+preprocessing={"channel_policy":"mean stereo channels to mono","decoder_format":"MP3","decoder_library":"soundfile","decoder_subtype":"MPEG_LAYER_III","output_finite":true,"probe_source":"registered DEAM source","resampler":"scipy.signal.resample_poly","segment_start_frame":0,"segment_stop_frame_exclusive":1984500,"source_channels":2,"source_sample_rate_hz":44100,"source_tail_excluded_frames":2690,"source_total_frames":1987190}
+probe_id=sample_bceeabb92e455714f1dd8c81efee768bd27abff4b9207fb68d4e3d069a23aab8
+probe_type=P2_REAL_DEAM
+input_sample_rate=24000
+input_sample_count=1080000
+input_duration_seconds=45.0
+input_tensor_shape=(1, 1080000)
+hidden_states_count=13
+research_layer_5_actual_index=5
+research_layer_5_block_identity=encoder.layers[4] / transformer_block_5
+research_layer_6_actual_index=6
+research_layer_6_block_identity=encoder.layers[5] / transformer_block_6
+layer5_shape=(1, 3374, 768)
+layer6_shape=(1, 3374, 768)
+observed_frame_count = T_raw = 3374
+hidden_dimension = D = 768
+observed_fps = T_raw / 45.0 = 3374 / 45.0 = 74.97777777777777 Hz
+layer5_finite=True
+layer6_finite=True
+p1_p2_structural_consistency=PASS
