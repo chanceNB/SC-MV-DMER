@@ -638,3 +638,23 @@ S5 evidence completeness、seed-set identity、dependency owner/required-before�
 ### 变更边界
 
 本决定只修复文档 persistence/authority synchronization defects，不重新打开 Foundation scientific semantics，不改变 RG-10 的 `>=98%` threshold、population、repair/retry policy 或证据有效性规则。未来修改上述 current authority 必须走正常 append-only Decision/Gate version/effective-validity 流程。
+
+## DEC-0027：首次冻结 DEAM Primary Song Split
+
+- 日期：2026-08-25
+- 状态：Accepted / Frozen
+- 决策类型：User-authorized Data Governance Decision
+- 适用范围：`E2_DEAM_PRIMARY_SPLIT_READY`、DEAM primary 及其后续正式 baseline、主模型、消融和 multi-seed runs
+
+### 决定
+
+1. 用户授权首次冻结 `primary-song-80-10-10-v1`，输入必须是已登记的 `DEAM-PRIMARY-v1` dataset manifest，且 dataset manifest internal hash 与 file checksum 原样绑定。
+2. split contract 固定为 `DEAM-PRIMARY-SONG-SPLIT/v1`。对每条 1,744 条 PRIMARY record 生成 canonical JSON：`dataset_id`、`song_id`、`split_contract_id`；使用固定 key 排序、UTF-8、compact JSON 和 SHA-256。
+3. 以 `(rank_digest ASC, song_id ASC)` 排序，`rank_index` 从 0 开始。固定配额为 train `floor(0.8*1744)=1395`、validation `floor(0.1*1744)=174`、test `175`。
+4. ranking 和 membership 不得读取 annotation、target、model result、seed、路径或文件名；不得使用随机数、sklearn/random split 或任何结果驱动选择。
+5. manifest 必须保存每条 `song_id`、`sample_id`、`logical_song_key`、split、rank digest/index、canonicalization rule、dataset manifest provenance 和自身 checksum。三 split 必须歌曲互斥并完整覆盖 1,744 条 PRIMARY。
+6. 这是唯一首份冻结 split。后续执行只能验证 registered manifest/hash；任何成员或配额变更必须新建可追踪 Decision/version，不得覆盖或生成第二份 primary split。
+
+### 变更控制
+
+本决定只冻结用户明确授权的 deterministic membership procedure，不改变数据内容、annotation semantics、RG-01 或后续特征/训练研究语义。任何 split identity、contract、quota 或 ranking rule 修改必须通过新的 append-only Decision 并使依赖它的 readiness/run evidence 失效。

@@ -11,6 +11,8 @@
 ### 2.1 Primary split
 
 - 主实验采用唯一一份歌曲级 `80/10/10` train/validation/test split manifest。
+- 首次冻结使用 `DEAM-PRIMARY-SONG-SPLIT/v1`：对每条 PRIMARY song 仅以 `dataset_id`、`song_id` 和 contract ID 组成 canonical JSON，固定 UTF-8、按 key 排序后计算 SHA-256；按 `(digest ASC, song_id ASC)` 排序并以 0-based rank 分配固定 `1395/174/175` 配额。
+- 该 ranking 不读取 annotation、target、model result、seed、路径或文件名；后续正式运行只验证并复用 registered manifest，不得重新生成或修改成员。
 - primary split manifest 一经正式冻结，所有正式 baseline、主模型、A1-A13 消融和 multi-seed 实验必须复用其成员关系。
 - 正式实验开始后，不得根据实验结果重新生成或筛选 primary split。
 

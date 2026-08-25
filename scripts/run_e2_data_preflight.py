@@ -36,22 +36,41 @@ def main() -> int:
     inventory_path = root / "reports/preflight/deam-source-inventory.json"
     dataset_path = root / "manifests/datasets/deam-primary-v1.json"
     split_path = root / "manifests/splits/deam-primary-song-80-10-10-v1.json"
-    evidence_path = root / "evidence/data/e2-deam-primary-split-ready.json"
-    report_path = root / "reports/data/e2-deam-primary-split-ready-report.txt"
+    evidence_path = root / "evidence/data/e2-deam-primary-split-ready-v2.json"
+    report_path = root / "reports/data/e2-deam-primary-split-ready-v2-report.txt"
 
     commit, dirty = _git_state(root)
     inventory = discover_deam(args.data_root)
     verify_inventory_checksum(inventory)
-    write_json_once(inventory.model_dump(mode="json"), inventory_path)
+    if inventory_path.exists():
+        from sc_mv_dmer.data.manifests import SourceInventory
+        registered_inventory = SourceInventory.model_validate_json(inventory_path.read_text(encoding="utf-8"))
+        verify_inventory_checksum(registered_inventory)
+        if registered_inventory.inventory_sha256 != inventory.inventory_sha256:
+            raise RuntimeError("registered source inventory checksum differs from current read-only audit")
+    else:
+        write_json_once(inventory.model_dump(mode="json"), inventory_path)
     manifest = bind_deam_primary(inventory, inventory_logical_path="reports/preflight/deam-source-inventory.json")
     verify_dataset_manifest_checksum(manifest)
-    write_json_once(manifest.model_dump(mode="json"), dataset_path)
+    if dataset_path.exists():
+        from sc_mv_dmer.data.manifests import DatasetManifest
+        registered_manifest = DatasetManifest.model_validate_json(dataset_path.read_text(encoding="utf-8"))
+        verify_dataset_manifest_checksum(registered_manifest)
+        if registered_manifest.manifest_sha256 != manifest.manifest_sha256:
+            raise RuntimeError("registered dataset manifest checksum differs from current read-only binding")
+        manifest = registered_manifest
+    else:
+        write_json_once(manifest.model_dump(mode="json"), dataset_path)
 
     blocker = None
     split_verification = None
     try:
         split = load_frozen_split(split_path)
-        split_verification = verify_frozen_split(manifest, split)
+        split_verification = verify_frozen_split(
+            manifest,
+            split,
+            dataset_manifest_file_sha256=_file_sha256(dataset_path),
+        )
     except FrozenSplitManifestUnavailable as exc:
         blocker = str(exc)
     verdict = "PASS" if split_verification is not None and not dirty else "BLOCKED"
@@ -72,6 +91,8 @@ def main() -> int:
         "dataset_manifest_sha256": manifest.manifest_sha256,
         "split_manifest_logical_path": "manifests/splits/deam-primary-song-80-10-10-v1.json",
         "split_manifest_present": split_path.is_file(),
+        "split_manifest_file_sha256": _file_sha256(split_path) if split_path.is_file() else None,
+        "split_manifest_sha256": split.get("split_sha256") if split_path.is_file() else None,
         "primary_population_count": len(manifest.primary_records),
         "long_song_count": len(manifest.long_song_keys),
         "audio_source_count": len(inventory.audio_song_keys),
