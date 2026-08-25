@@ -276,12 +276,31 @@ def compile_downstream_dimensions(
 
     nodes: list[DimensionNode] = [
         _node(
+            "e11_observation",
+            "E1.1 observed MERT output contract",
+            (raw_t, hidden_dimension),
+            source_class="MEASURED",
+            formula="E1.1 PASS qualification and P1/P2 structural observation",
+            dependencies=(),
+            unit="evidence_shape",
+        ),
+        _node(
+            "canonical_t",
+            "canonical downstream T",
+            (t,),
+            source_class="FROZEN_CONSTANT",
+            formula="frozen RG-01 2Hz grid for 45 seconds: 45/0.5",
+            dependencies=(),
+            dtype="int64",
+            unit="time_positions",
+        ),
+        _node(
             "mert_raw_output",
             "X_mert",
             (raw_t, hidden_dimension),
             source_class="MEASURED",
             formula="E1.1 p1/p2 layer5_shape[1:3]",
-            dependencies=("E1.1",),
+            dependencies=("e11_observation",),
         ),
         _node(
             "timesnet_raw_input",
@@ -528,17 +547,18 @@ def compile_downstream_dimensions(
         )
     )
 
+    node_by_id = {node.node_id: node for node in nodes}
     edges = tuple(
         DimensionEdge(
-            source_node_id=node_id,
-            target_node_id=dependency,
+            source_node_id=dependency,
+            target_node_id=node.node_id,
             relation="DEPENDS_ON",
-            formula="target derives from source under the node formula",
-            source_class="DERIVED" if node_id in {"timesnet_raw_input", "x_deep", "e_deep", "chatts_input"} else "FROZEN_CONSTANT",
+            formula="target derives from source under the target node formula",
+            source_class=node_by_id[dependency].source_class,
         )
         for node in nodes
         for dependency in node.dependencies
-        for node_id in (node.node_id,)
+        if dependency in node_by_id
     )
     temporal_dimensions = {
         "mert_raw_output": raw_t,

@@ -59,6 +59,11 @@ def test_dimension_binding_resolves_measured_to_all_downstream_shapes() -> None:
     assert binding.timesnet_period_interpretation.period_set_numeric is None
     assert binding.required_temporal_reduction.ratio_numerator == 3374
     assert binding.required_temporal_reduction.ratio_denominator == 90
+    node_ids = {node.node_id for node in binding.nodes}
+    assert all(
+        edge.source_node_id in node_ids and edge.target_node_id in node_ids
+        for edge in binding.edges
+    )
 
 
 def test_dimension_binding_rejects_e11_frame_mismatch() -> None:
@@ -74,4 +79,3 @@ def test_dimension_binding_rejects_e11_frame_mismatch() -> None:
             upstream_manifest_sha256="1" * 64,
             temporal_geometry=_geometry(),
         )
-

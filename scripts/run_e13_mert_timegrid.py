@@ -17,6 +17,7 @@ from sc_mv_dmer.features.mert_timegrid import (
 )
 from sc_mv_dmer.foundation.canonical import canonical_json, sha256_canonical
 from sc_mv_dmer.foundation.dimensions import (
+    DownstreamDimensionBinding,
     file_sha256,
     verify_downstream_binding,
 )
@@ -91,9 +92,7 @@ def run_e13(
     )
     if e12_payload.get("e1_2_verdict") != "PASS" or e12_payload.get("e1_3_readiness") != "READY":
         raise ValueError("E1.3 requires current-effective E1.2 PASS/READY")
-    binding = __import__(
-        "sc_mv_dmer.foundation.dimensions", fromlist=["DownstreamDimensionBinding"]
-    ).DownstreamDimensionBinding.model_validate(binding_payload)
+    binding = DownstreamDimensionBinding.model_validate(binding_payload)
     verify_downstream_binding(binding)
     timegrid = compile_mert_timegrid(
         geometry=binding.temporal_geometry,
@@ -211,4 +210,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
