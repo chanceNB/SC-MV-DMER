@@ -81,6 +81,14 @@ def run_e12(
     report_path: Path,
     report_json_path: Path,
 ) -> E12DimensionQualification:
+    e11_evidence_path = Path(e11_evidence_path).resolve()
+    e11_qualification_path = Path(e11_qualification_path).resolve()
+    upstream_manifest_path = Path(upstream_manifest_path).resolve()
+    snapshot_root = Path(snapshot_root).resolve()
+    binding_path = Path(binding_path).resolve()
+    qualification_path = Path(qualification_path).resolve()
+    report_path = Path(report_path).resolve()
+    report_json_path = Path(report_json_path).resolve()
     targets = (binding_path, qualification_path, report_path, report_json_path)
     existing = [str(path) for path in targets if Path(path).exists()]
     if existing:

@@ -78,6 +78,12 @@ def run_e13(
     report_path: Path,
     report_json_path: Path,
 ) -> E13TimeGridQualification:
+    dimension_binding_path = Path(dimension_binding_path).resolve()
+    e12_qualification_path = Path(e12_qualification_path).resolve()
+    timegrid_path = Path(timegrid_path).resolve()
+    qualification_path = Path(qualification_path).resolve()
+    report_path = Path(report_path).resolve()
+    report_json_path = Path(report_json_path).resolve()
     targets = (timegrid_path, qualification_path, report_path, report_json_path)
     existing = [str(path) for path in targets if Path(path).exists()]
     if existing:
