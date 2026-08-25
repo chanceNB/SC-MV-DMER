@@ -93,6 +93,10 @@ def run_e12(
     )
     if e11_qualification.get("e1_1_verdict") != "PASS":
         raise ValueError("E1.2 requires current-effective E1.1 PASS")
+    # E1.1 keeps the machine-readable forward report and qualification
+    # separate.  Pass the qualification verdict alongside the report facts;
+    # the recorded evidence checksum still refers to the untouched report.
+    e11_evidence["e1_1_verdict"] = e11_qualification["e1_1_verdict"]
     upstream_payload = load_upstream_manifest(upstream_manifest_path)
     pinned_manifest = PinnedMertUpstreamManifest.model_validate(upstream_payload)
     verify_pinned_mert_manifest(pinned_manifest, snapshot_root)
@@ -217,4 +221,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
