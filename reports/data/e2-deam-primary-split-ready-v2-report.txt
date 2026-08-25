@@ -1,0 +1,8 @@
+=== E2_DEAM_PRIMARY_SPLIT_READY PRE-FLIGHT ===
+verdict=PASS
+primary_population_count=1744
+long_song_count=58
+audio_source_count=1802
+annotation_song_count=1802
+split_manifest_present=True
+blocker=none
