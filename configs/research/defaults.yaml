@@ -8,7 +8,7 @@ dataset:
   dataset_version: "DEAM-2019"
   data_root: "D:/SC-MV-DMER-data"
   split_manifest_id: "primary-song-80-10-10-v1"
-  split_manifest_sha256: "pending-frozen-manifest"
+  split_manifest_sha256: "505fbdef08c61481e5ba479589b86278e2881f71f322b0da4cb90c5e3dacf220"
 features:
   definition_version: "SC-MV-DMER-features-v1"
   time_grid_hz: 2
