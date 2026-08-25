@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["rule_version","record_count","targets","manifest_sha256"],"properties":{"rule_version":{"type":"string"},"record_count":{"type":"integer","minimum":1},"targets":{"type":"array","items":{"enum":["rms","brightness","mode","key"]}},"manifest_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"}}}

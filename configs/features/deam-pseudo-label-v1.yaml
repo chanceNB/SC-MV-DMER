@@ -1,0 +1,8 @@
+rule_version: deam-pseudo-label-v1
+sample_rate_hz: 22050
+segment_duration_seconds: 5
+targets:
+  rms: {dimension: 1, rule: frame_rms_mean}
+  brightness: {dimension: 1, rule: spectral_centroid_mean}
+  mode: {dimension: 1, rule: chroma_major_minus_minor_strength}
+  key: {dimension: 12, rule: chroma_tonic_argmax_one_hot}

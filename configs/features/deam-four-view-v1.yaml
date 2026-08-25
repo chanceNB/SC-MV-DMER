@@ -1,0 +1,23 @@
+cache_id: deam-four-view
+version: v1
+sample_duration_seconds: 45
+handcrafted:
+  sample_rate_hz: 22050
+  n_fft: 2048
+  hop_length: 512
+  mel_bins: 128
+  mel_power_to_db: true
+  mfcc_coefficients: 40
+  mfcc_include_c0: true
+  chroma: cqt
+  chroma_bins: 12
+  chroma_bins_per_octave: 36
+  chroma_l1_normalize_raw_frames: true
+deep:
+  sample_rate_hz: 24000
+  layers: [5, 6]
+  aggregation: mean
+binning:
+  bins: 90
+  duration_seconds: 0.5
+  boundary: HALF_OPEN_SAMPLE_DOMAIN

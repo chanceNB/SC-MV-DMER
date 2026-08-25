@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["cache_id","cache_version","record_count","records","manifest_sha256"],"properties":{"cache_id":{"type":"string"},"cache_version":{"type":"string"},"record_count":{"type":"integer","minimum":1},"records":{"type":"array"},"manifest_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"}}}
