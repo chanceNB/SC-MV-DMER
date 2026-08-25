@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sc-mv-dmer.local/schemas/split_manifest.schema.json",
+  "title": "Frozen DEAM primary song split",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["split_manifest_id", "split_version", "dataset_manifest_id", "train_song_ids", "validation_song_ids", "test_song_ids", "split_sha256"],
+  "properties": {
+    "split_manifest_id": {"const": "primary-song-80-10-10-v1"},
+    "split_version": {"type": "string", "minLength": 1},
+    "dataset_manifest_id": {"const": "DEAM-PRIMARY-v1"},
+    "train_song_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "validation_song_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "test_song_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "split_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
