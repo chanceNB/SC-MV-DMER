@@ -28,11 +28,17 @@ def _hidden_layers(bundle: Any) -> tuple[np.ndarray, np.ndarray]:
             hidden = bundle.get("layers")
         if isinstance(hidden, Mapping):
             return np.asarray(hidden[5]), np.asarray(hidden[6])
-        if hidden is not None and len(hidden) > 6:
-            return np.asarray(hidden[5]), np.asarray(hidden[6])
+        if hidden is not None:
+            if len(hidden) == 2:
+                return np.asarray(hidden[0]), np.asarray(hidden[1])
+            if len(hidden) > 6:
+                return np.asarray(hidden[5]), np.asarray(hidden[6])
     hidden = getattr(bundle, "hidden_states", None)
-    if hidden is not None and len(hidden) > 6:
-        return np.asarray(hidden[5]), np.asarray(hidden[6])
+    if hidden is not None:
+        if len(hidden) == 2:
+            return np.asarray(hidden[0]), np.asarray(hidden[1])
+        if len(hidden) > 6:
+            return np.asarray(hidden[5]), np.asarray(hidden[6])
     model = getattr(bundle, "model", bundle)
     processor = getattr(bundle, "processor", None)
     waveform = getattr(bundle, "waveform", None)
