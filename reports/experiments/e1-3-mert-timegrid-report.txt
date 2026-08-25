@@ -1,0 +1,16 @@
+E1.3 MERT 2 Hz/90-bin TimeGrid binding
+verdict = PASS
+expected_frame_count_from_contract = 3374
+observed/raw_frame_count = 3374
+effective_stride_samples = 320
+effective_receptive_field_samples = 400
+assigned_frame_count = 3374
+unassigned_frame_count = 0
+duplicate_assignment_count = 0
+valid_bin_count = 90
+bin_frame_count_min_max = 37,38
+boundary_rule = half-open sample-domain bins [0,0.5),...,[44.5,45.0)
+aggregation = mean over assigned valid frames
+forbidden = trim,padding,drop,clamp,copy,fill,interpolation,adaptive_pooling,reshape
+binding_sha256 = 3eb8c367ad3642aa5d84aefcbba2d12e554c3496c8df8a0ed2c53195d98c2233
+binding_file_sha256 = b1d85bcaa4d9690f35688e7fc6d423b68f83f06086dd7a47046cbc5b585dacde

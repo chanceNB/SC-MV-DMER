@@ -1,0 +1,14 @@
+E1.2 MERT downstream dimension derivation
+verdict = PASS
+T_raw = 3374
+observed_fps = 74.977777777777774 Hz
+effective_stride_samples = 320
+effective_receptive_field_samples = 400
+expected_frame_count_from_contract = 3374
+TimesNet raw temporal input = 3374
+TimesNet period interpretation = runtime FFT top-k over measured raw frames
+MERT_to_2Hz_ratio = 3374/90
+canonical_downstream_T = 90
+forbidden = trim,padding,interpolation,reshape,adaptive_pooling
+binding_sha256 = c6cb37d7e43b466b7d75f1a185d749466f10a3a7fd444361ca82c3370c3ba93c
+binding_file_sha256 = d3e0cddff9aa802005529e22dd55b5d83d16ba84d7781ffc132e9aa16a6d12ae
