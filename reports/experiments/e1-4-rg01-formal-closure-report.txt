@@ -1,0 +1,19 @@
+=== RG-01 FORMAL CLOSURE (E1.4) ===
+evaluation_id=RG-01-E1.4-attempt-1
+gate_version=RG-01-v1
+verdict=PASS
+evidence_commit=317703d8a91153c65979497db1180ec3d154a1d1
+evidence_bundle_sha256=fd932b88e27eff5256adc0875c240ac411f523ebd5e0385b06f10ef79b3eb0bf
+current_effective_verdict=PASS
+git_clean_preflight=True :: formal evaluation must start from clean Git
+e11_pass=True :: E1.1 verdict and structural consistency
+e11_qualification_checksum=True :: E1.1 qualification canonical checksum
+e11_observations=True :: P1/P2 finite, exact-length, T_raw=3374, D=768
+e11_report_binding=True :: E1.1 report path and checksum
+pinned_upstream=True :: pinned repository, revision and snapshot identity
+e12_binding=True :: v2 dimension binding checksum, DAG completeness and T=90
+e12_qualification=True :: current E1.2 v2 qualification and binding checksum
+e13_timegrid=True :: v2 exact-once frame accounting and 90 non-empty bins
+e13_qualification=True :: current E1.3 v2 qualification and TimeGrid checksum
+lineage=True :: E1.1 -> E1.2 v2 -> E1.3 v2 predecessor chain
+forbidden_operation_firewall=True :: no trim/padding/interpolation/reshape/adaptive pooling semantics
