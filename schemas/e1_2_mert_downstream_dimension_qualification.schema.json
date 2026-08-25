@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "E1.2 MERT downstream dimension qualification",
+  "type": "object",
+  "required": ["schema_version", "qualification_id", "observed_t_raw", "canonical_downstream_t", "e1_2_verdict", "e1_3_readiness", "qualification_sha256"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "qualification_id": {"const": "E1-2-MERT-DOWNSTREAM-DIMENSION-DERIVATION-v1"},
+    "observed_t_raw": {"type": "integer", "const": 3374},
+    "canonical_downstream_t": {"type": "integer", "const": 90},
+    "e1_2_verdict": {"const": "PASS"},
+    "e1_3_readiness": {"const": "READY"},
+    "qualification_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "E1.3 MERT TimeGrid qualification",
+  "type": "object",
+  "required": ["schema_version", "qualification_id", "raw_frame_count", "expected_frame_count", "bin_count", "assigned_frame_count", "unassigned_frame_count", "duplicate_assignment_count", "e1_3_verdict", "e1_4_readiness", "qualification_sha256"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "qualification_id": {"const": "E1-3-MERT-TIMEGRID-2HZ-BINDING-v1"},
+    "raw_frame_count": {"type": "integer", "const": 3374},
+    "expected_frame_count": {"type": "integer", "const": 3374},
+    "bin_count": {"type": "integer", "const": 90},
+    "assigned_frame_count": {"type": "integer", "const": 3374},
+    "unassigned_frame_count": {"type": "integer", "const": 0},
+    "duplicate_assignment_count": {"type": "integer", "const": 0},
+    "e1_3_verdict": {"const": "PASS"},
+    "e1_4_readiness": {"const": "READY"},
+    "qualification_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
