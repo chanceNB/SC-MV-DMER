@@ -658,3 +658,83 @@ S5 evidence completeness、seed-set identity、dependency owner/required-before�
 ### 变更控制
 
 本决定只冻结用户明确授权的 deterministic membership procedure，不改变数据内容、annotation semantics、RG-01 或后续特征/训练研究语义。任何 split identity、contract、quota 或 ranking rule 修改必须通过新的 append-only Decision 并使依赖它的 readiness/run evidence 失效。
+
+## DEC-0028：按截图规则重建 DEAM DMER/PDMER 数据身份
+
+- 日期：2026-08-26
+- 状态：Accepted / Frozen
+- 决策类型：User-authorized Research Data Contract Decision
+- 适用范围：DEAM 数据清洗、DMER/PDMER 标签工件及其后续 feature、training、evaluation provenance
+- supersedes（仅对当前数据适用范围）：`DEC-0027` 的 `DEAM-PRIMARY-v1` / `primary-song-80-10-10-v1` 绑定
+- PDMER task 粒度部分已由 `DEC-0029` 修正并 supersede；其余清洗、population 和音频边界继续有效。
+
+### 背景
+
+截图定义的研究数据规则与旧的 1,744-song 80/10/10 primary split 不同：研究需要保留有独立
+`WorkerId` 的标注者轨迹以支持 PDMER 个性化任务，并把 58 首完整歌曲作为测试集。原始数据中
+有 744 个 primary 文件缺少标注者 ID，且 5 个清洗后保留的 primary 音频实际短于 45 秒。
+
+### 决定
+
+1. 新建不可变数据身份 `DEAM-PDMER-CLEAN-v1` / `deam-pdmer-clean-v1`。raw 数据只读，源码不写入绝对路径。
+2. 对全部 1,744 个 primary：去除 `sample_15000ms` 以前的动态标注；缺少 `WorkerId` 的整首歌曲排除，共 744 条；剩余 1,000 条组成训练 population。
+3. 58 首完整歌曲全部组成测试 population。当前规则不生成 validation 成员；manifest 明确记录 `validation_policy=UNDEFINED_PENDING_SEPARATE_FREEZE`。不得恢复旧 80/10/10 split。
+4. DMER 对所有有效 annotation rows 在每个视图、时间点取均值，并保存 row/unique-worker/duplicate provenance 与 view mask。重复 WorkerId 不得静默覆盖或去重。
+5. PDMER 按 `song_id + WorkerId` 生成独立任务，保留完整轨迹、原始 row index、WorkerId 及逐视图 mask。arousal/valence WorkerId 集合差异保留为 provenance，不静默删除歌曲或补造标签。
+6. `dataset_id`、`song_id`、`sample_id`、`task_id` 只由版本化逻辑身份生成，不依赖盘符、绝对路径或机器名。
+7. 5 条保留 primary（`1174,1200,1273,1493,1789`）短于 exact 45 秒。保留其标签记录，但在新音频政策获批前，正式 feature/pseudo-label materialization 保持 BLOCKED；禁止 trim、padding、interpolation、reshape 或 adaptive pooling。
+8. 新版 manifest、DMER/PDMER JSONL 和 audit 为一次性快照。任何规则、源数据或处理代码变化必须新建版本，不得覆盖旧工件。
+
+### 当前工件
+
+- manifest：`manifests/datasets/deam-pdmer-clean-v2.json`
+- manifest SHA-256：`20ed76cf611fece522c9bc588c102064d438f3603ddd926f7b69c6365f77c793`
+- cleaning audit：`reports/data/deam-pdmer-clean-v2-audit.json`
+- audit SHA-256：`f27366b020ba1a0282f8c19293f03021dd8d0c7cf8f6f7135bb9ee4807aa38e4`
+- external logical root：`processed/deam-pdmer-clean-v2/`
+
+### 变更控制
+
+本决定只重定义当前 DEAM 数据身份、清洗规则和标签组织，不修改 Foundation 模型结构、loss、Gate
+或 optimizer 语义。任何 validation、短音频处理政策或 WorkerId 聚合语义变化都必须通过新的
+append-only Decision，并使受影响的 manifest/evidence/run 按 provenance 失效或 supersede。
+
+## DEC-0029：修正 PDMER 元任务粒度为跨歌曲 WorkerId
+
+- 日期：2026-08-26
+- 状态：Accepted / Frozen
+- 决策类型：User-requested Data Contract Correction
+- 适用范围：`DEAM-PDMER-CLEAN-v2` 的 PDMER task identity 与 processed artifact
+- supersedes：`DEAM-PDMER-CLEAN-v1` 中按 song/WorkerId 生成 task 的中间物化结果
+
+### 决定
+
+截图明确规定“同一人的全部乐曲构成 1 个元任务”。因此 PDMER 的 task identity 固定为
+`stable_id("pdmer_task", dataset_id, WorkerId)`：每个 `WorkerId` 只生成一个 meta-task，
+其 `songs[]` 保存该标注者在所有保留歌曲上的完整 arousal/valence 轨迹、原始 row index、
+逐视图 mask 和配对状态。DMER 的逐歌曲均值规则不变。
+
+本次修正创建新数据版本 `DEAM-PDMER-CLEAN-v2`，不覆盖 v1 中间工件。v1 仅作为
+`SUPERSEDED` provenance 保留；v2 的 PDMER task 数与 song assignment 数分别写入 manifest/audit。
+后续任何任务粒度变化必须再次创建新版本和 append-only Decision。
+
+## DEC-0030：排除无法满足 exact-45s 的五条 primary 并创建 v3 数据身份
+
+- 日期：2026-08-26
+- 状态：Accepted / Frozen
+- 决策类型：User-authorized Data Version Successor
+- 适用范围：`DEAM-PDMER-CLEAN-v3` 的数据 population、DMER/PDMER 工件、RG-02 data preflight 与后续 feature/training provenance
+- supersedes（仅对 v3 successor 的适用范围）：`DEAM-PDMER-CLEAN-v2` 的 retained-short-primary feature blocker
+
+### 决定
+
+1. 保留 `DEAM-PDMER-CLEAN-v2`、其 manifest、cleaning audit、processed artifacts 和旧 RG-02 evidence 不变。
+2. 创建不可变 successor `DEAM-PDMER-CLEAN-v3`，从 v2 的 1,000 条 retained primary 中排除 `1174`、`1200`、`1273`、`1493`、`1789`；新训练 population 固定为 995 条 exact-45s primary，58 首 long song 继续作为测试 population。
+3. 五条歌曲仍保留 source checksum、duration 和排除原因 `SHORT_AUDIO_EXACT_45S` provenance；不执行 trim、padding、interpolation、reshape 或 adaptive pooling。
+4. v3 重新生成 dataset/song/sample/task identity、DMER/PDMER artifact 和 checksum。PDMER 继续按跨歌曲 `WorkerId` 生成一个 meta-task，validation policy 继续为 `UNDEFINED_PENDING_SEPARATE_FREEZE`，不生成 replacement split。
+5. RG-02 只能绑定 v3 manifest、v3 cleaning/preflight audit 和 v3 artifact checksums；旧 split、旧 RG-02 evidence 不得转移。feature/pseudo-label cache 需在新的 RG-02 前置审计通过后以新 cache version 发布。
+6. A1-v1 model architecture identity、Sensor/Markov/Fusion/Qwen/LoRA/Head、loss 定义和 45 秒/2 Hz/T=90/MERT D=768/四视图语义保持不变；仅重新计算 995 population 对应的 exact-once sampler、steps、scheduler horizon 和 checkpoint interval provenance。
+
+### 变更控制
+
+本决定不授权训练、checkpoint、paper aggregation 或 validation 成员推断。任何 validation policy、短音频政策、feature cache 语义或模型/损失架构变化都必须另建 append-only Decision/version，并使受影响 evidence/run 按 provenance 失效或 supersede。
