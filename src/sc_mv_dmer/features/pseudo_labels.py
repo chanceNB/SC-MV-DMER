@@ -28,7 +28,12 @@ def derive_pseudo_labels(waveform: WaveformRecord, *, timegrid_binding_sha256: s
     centers = np.asarray([i + n_fft // 2 for i in range(0, frame_count * hop, hop)], dtype=float) / sr
     bin_indices = np.floor(centers / 0.5).astype(int)
     targets: dict[str, np.ndarray] = {}
-    binned = lambda values: np.stack([values[bin_indices == i].mean(axis=0) for i in range(90)], axis=0).reshape(90, -1).astype(np.float32)
+    def binned(values: np.ndarray) -> np.ndarray:
+        rows = []
+        for i in range(90):
+            value = np.asarray(values[bin_indices == i].mean(axis=0), dtype=np.float32)
+            rows.append(np.expand_dims(value, axis=0) if value.ndim == 0 else value)
+        return np.stack(rows, axis=0).astype(np.float32)
     targets["rms"] = binned(rms_raw)
     targets["brightness"] = binned(bright_raw)
     major = np.array([0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)

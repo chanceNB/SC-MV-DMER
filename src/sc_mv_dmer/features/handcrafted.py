@@ -56,8 +56,13 @@ def _cqt_like(power: np.ndarray, freqs: np.ndarray, sr: int, bins_per_octave: in
         total = weights.sum()
         if total > 0:
             out[:, i] = (power * weights[None, :]).sum(axis=1) / total
-    reshaped = out.reshape(power.shape[0], 8, bins_per_octave)
-    chroma = reshaped.reshape(power.shape[0], 8, 12, bins_per_octave // 12).mean(axis=-1).sum(axis=1)
+    bins_per_pitch = bins_per_octave // 12
+    chroma = np.zeros((power.shape[0], 12), dtype=np.float32)
+    for octave in range(8):
+        octave_start = octave * bins_per_octave
+        for pitch_class in range(12):
+            start = octave_start + pitch_class * bins_per_pitch
+            chroma[:, pitch_class] += out[:, start : start + bins_per_pitch].mean(axis=1)
     norms = np.sum(np.abs(chroma), axis=1, keepdims=True)
     return np.divide(chroma, norms, out=np.zeros_like(chroma), where=norms > 1e-12)
 

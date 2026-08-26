@@ -1,0 +1,1 @@
+{"authority_kind":"automatic","cache_manifest_sha256":"0f7b0e699184208bcb0e719d8288bfc3c1f5c9ade989a83f90d1e892985a7089","evidence_sha256":"970ea8fd5068ecb8c5e99f82f6153f393c0332393d4d9737ec898977f88a9716","expected_record_count":1053,"failure_count":0,"failure_sample_ids":[],"failures":[],"gate":"RG-02","record_count":1053,"schema_version":"1.0","verdict":"PASS"}

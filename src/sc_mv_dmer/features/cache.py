@@ -28,8 +28,11 @@ class CacheSpec(BaseModel):
     logical_root: str = Field(min_length=1)
     dataset_manifest_logical_path: str = Field(min_length=1)
     dataset_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    split_manifest_logical_path: str = Field(min_length=1)
-    split_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    dataset_manifest_file_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    source_inventory_logical_path: str | None = None
+    source_inventory_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    split_manifest_logical_path: str | None = None
+    split_manifest_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     dimensions_logical_path: str = Field(min_length=1)
     dimensions_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     timegrid_logical_path: str = Field(min_length=1)
@@ -38,6 +41,8 @@ class CacheSpec(BaseModel):
     upstream_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     rg01_evidence_logical_path: str = Field(min_length=1)
     rg01_evidence_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    population_counts: dict[str, int] = Field(default_factory=dict)
+    validation_policy: str = "UNDEFINED_PENDING_SEPARATE_FREEZE"
 
 
 class CacheRecord(BaseModel):
@@ -46,6 +51,7 @@ class CacheRecord(BaseModel):
     dataset_id: str
     song_id: str
     sample_id: str
+    population_role: str = "TRAIN_PRIMARY"
     source_audio_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     payload_logical_path: str
     payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -60,8 +66,11 @@ class FourViewFeatureCacheManifest(BaseModel):
     cache_version: str
     dataset_manifest_logical_path: str
     dataset_manifest_sha256: str
-    split_manifest_logical_path: str
-    split_manifest_sha256: str
+    dataset_manifest_file_sha256: str | None = None
+    source_inventory_logical_path: str | None = None
+    source_inventory_sha256: str | None = None
+    split_manifest_logical_path: str | None = None
+    split_manifest_sha256: str | None = None
     dimensions_logical_path: str
     dimensions_sha256: str
     timegrid_logical_path: str
@@ -72,6 +81,8 @@ class FourViewFeatureCacheManifest(BaseModel):
     rg01_evidence_sha256: str
     record_count: int
     records: tuple[CacheRecord, ...]
+    population_counts: dict[str, int] = Field(default_factory=dict)
+    validation_policy: str = "UNDEFINED_PENDING_SEPARATE_FREEZE"
     manifest_sha256: str
 
     def unsigned_payload(self) -> dict[str, Any]:
@@ -122,6 +133,7 @@ def write_cache(
         manifest_records: list[CacheRecord] = []
         for item in records:
             identity = {key: item[key] for key in ("dataset_id", "song_id", "sample_id", "source_audio_sha256")}
+            identity["population_role"] = item.get("population_role", "TRAIN_PRIMARY")
             views = item["views"]
             payload_arrays: dict[str, np.ndarray] = {}
             view_meta: dict[str, dict[str, Any]] = {}
@@ -160,6 +172,9 @@ def write_cache(
             "cache_version": spec.version,
             "dataset_manifest_logical_path": spec.dataset_manifest_logical_path,
             "dataset_manifest_sha256": spec.dataset_manifest_sha256,
+            "dataset_manifest_file_sha256": spec.dataset_manifest_file_sha256,
+            "source_inventory_logical_path": spec.source_inventory_logical_path,
+            "source_inventory_sha256": spec.source_inventory_sha256,
             "split_manifest_logical_path": spec.split_manifest_logical_path,
             "split_manifest_sha256": spec.split_manifest_sha256,
             "dimensions_logical_path": spec.dimensions_logical_path,
@@ -172,6 +187,8 @@ def write_cache(
             "rg01_evidence_sha256": spec.rg01_evidence_sha256,
             "record_count": len(manifest_records),
             "records": [record.model_dump(mode="json") for record in manifest_records],
+            "population_counts": dict(spec.population_counts),
+            "validation_policy": spec.validation_policy,
         }
         manifest = FourViewFeatureCacheManifest(
             **unsigned, manifest_sha256=sha256_canonical(unsigned)
