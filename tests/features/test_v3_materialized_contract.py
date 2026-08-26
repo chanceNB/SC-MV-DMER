@@ -1,14 +1,20 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from sc_mv_dmer.foundation.canonical import sha256_canonical
 
 
 def test_v3_feature_and_pseudo_caches_bind_full_population_without_validation(tmp_path):
     repo = Path(__file__).parents[2]
+    artifact_root_value = os.environ.get("SC_MV_DMER_ARTIFACT_ROOT")
+    if not artifact_root_value:
+        pytest.fail("MISSING_IMMUTABLE_EXECUTION_ARTIFACT: set SC_MV_DMER_ARTIFACT_ROOT")
+    artifact_root = Path(artifact_root_value)
     feature_path = repo / "manifests/features/deam-four-view-cache-v3.json"
     pseudo_path = repo / "manifests/features/deam-pseudo-label-bundle-v3.json"
     feature = json.loads(feature_path.read_text(encoding="utf-8"))
@@ -32,8 +38,12 @@ def test_v3_feature_and_pseudo_caches_bind_full_population_without_validation(tm
 
     pseudo_roles = {row["population_role"] for row in pseudo["records"]}
     assert pseudo_roles == roles
-    for row in pseudo["records"][:3]:
-        payload = repo / row["payload_logical_path"]
+    for row in feature["records"]:
+        payload = artifact_root / row["payload_logical_path"]
+        assert payload.is_file()
+        assert hashlib.sha256(payload.read_bytes()).hexdigest() == row["payload_sha256"]
+    for row in pseudo["records"]:
+        payload = artifact_root / row["payload_logical_path"]
         assert payload.is_file()
         assert hashlib.sha256(payload.read_bytes()).hexdigest() == row["payload_sha256"]
         with np.load(payload) as arrays:

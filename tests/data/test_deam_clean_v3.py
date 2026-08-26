@@ -1,19 +1,28 @@
 import hashlib
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 from sc_mv_dmer.foundation.canonical import sha256_canonical
 
 
 def test_v3_snapshot_has_995_train_and_58_test_without_mutating_v2():
     repo = Path(__file__).parents[2]
-    v2 = json.loads((repo / "manifests/datasets/deam-pdmer-clean-v2.json").read_text(encoding="utf-8"))
+    historical_root_value = os.environ.get("SC_MV_DMER_HISTORICAL_ARTIFACT_ROOT")
+    if not historical_root_value:
+        pytest.fail("MISSING_IMMUTABLE_HISTORICAL_ARTIFACT: set SC_MV_DMER_HISTORICAL_ARTIFACT_ROOT")
+    historical_root = Path(historical_root_value)
+    v2_path = historical_root / "manifests/datasets/deam-pdmer-clean-v2.json"
+    v2 = json.loads(v2_path.read_text(encoding="utf-8"))
     v3_path = repo / "manifests/datasets/deam-pdmer-clean-v3.json"
     v3 = json.loads(v3_path.read_text(encoding="utf-8"))
     assert v2["manifest_id"] == "DEAM-PDMER-CLEAN-v2"
     assert v3["manifest_id"] == "DEAM-PDMER-CLEAN-v3"
     assert v3["supersedes_manifest_id"] == v2["manifest_id"]
     assert v3["supersedes_manifest_sha256"] == v2["manifest_sha256"]
+    assert v2["manifest_id"] == "DEAM-PDMER-CLEAN-v2"
     assert v3["population"]["retained_train_primary_count"] == 995
     assert v3["population"]["retained_test_long_song_count"] == 58
     assert v3["split_policy"]["validation"] == "UNDEFINED_PENDING_SEPARATE_FREEZE"

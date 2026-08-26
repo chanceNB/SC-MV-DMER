@@ -58,15 +58,18 @@ def _file_sha256(path: Path) -> str:
 
 
 def _cache_payloads_available(repo_root: Path, artifact_root: Path | None, cache: dict[str, Any]) -> bool:
-    missing = []
+    records = cache.get("records", [])
+    if not isinstance(records, list) or len(records) != cache.get("record_count"):
+        return False
     for record in cache.get("records", []):
         logical = record.get("payload_logical_path", "")
-        candidate = (artifact_root / logical) if artifact_root is not None and logical.startswith("artifacts/") else (repo_root / logical)
+        logical_path = Path(logical)
+        if logical_path.is_absolute() or ".." in logical_path.parts or not logical.startswith("artifacts/"):
+            return False
+        candidate = (artifact_root / logical) if artifact_root is not None else (repo_root / logical)
         if not candidate.is_file() or _file_sha256(candidate) != record.get("payload_sha256"):
-            missing.append(logical)
-            if len(missing) >= 5:
-                break
-    return not missing
+            return False
+    return True
 
 
 def run_preflight(repo_root: Path, *, artifact_root: Path | None = None) -> PreflightReport:
