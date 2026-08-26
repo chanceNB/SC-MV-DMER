@@ -1,13 +1,13 @@
-import torch
-
-from sc_mv_dmer.training.sensor_executor import SensorLossContract, SensorOnlyModel
-
-
 def _batch():
+    import torch
+
     return {name: torch.randn(2, 90, dim) for name, dim in {"mel": 128, "mfcc": 40, "chroma": 12}.items()}
 
 
 def test_sensor_branch_is_handcrafted_only_and_gradients_reach_encoders():
+    import torch
+    from sc_mv_dmer.training.sensor_executor import SensorLossContract, SensorOnlyModel
+
     model = SensorOnlyModel(hidden_dim=8, view_dropout_p=0.9).train()
     output = model(_batch())
     assert set(output["sensor"]) == {"rms", "brightness", "mode", "key"}
@@ -22,6 +22,9 @@ def test_sensor_branch_is_handcrafted_only_and_gradients_reach_encoders():
 
 
 def test_view_dropout_does_not_change_sensor_supervision_path():
+    import torch
+    from sc_mv_dmer.training.sensor_executor import SensorOnlyModel
+
     model = SensorOnlyModel(hidden_dim=8, view_dropout_p=0.9)
     values = _batch()
     model.eval()
@@ -33,6 +36,9 @@ def test_view_dropout_does_not_change_sensor_supervision_path():
 
 
 def test_key_contract_pools_nine_segments_and_excludes_short_segment():
+    import torch
+    from sc_mv_dmer.training.sensor_executor import SensorLossContract
+
     logits = torch.randn(1, 90, 12)
     targets = torch.nn.functional.one_hot(torch.zeros(1, 90, dtype=torch.long), 12).float()
     mask = torch.ones(1, 90, dtype=torch.bool)
