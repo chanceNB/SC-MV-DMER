@@ -50,13 +50,12 @@ class SensorOnlyModel(nn.Module):
             raise ValueError("view_dropout_p must be in [0, 1)")
         self.encoders = nn.ModuleDict({name: HandcraftedViewEncoder(dim, hidden_dim) for name, dim in VIEW_DIMS.items()})
         self.view_dropout = nn.Dropout(view_dropout_p)
-        fused_dim = hidden_dim * len(VIEW_DIMS)
         self.sensor_heads = nn.ModuleDict(
             {
-                "rms": nn.Linear(fused_dim, 1),
-                "brightness": nn.Linear(fused_dim, 1),
-                "mode": nn.Linear(fused_dim, 1),
-                "key": nn.Linear(fused_dim, KEY_CLASS_COUNT),
+                "rms": nn.Linear(hidden_dim, 1),
+                "brightness": nn.Linear(hidden_dim, 1),
+                "mode": nn.Linear(hidden_dim, 1),
+                "key": nn.Linear(hidden_dim, KEY_CLASS_COUNT),
             }
         )
 
@@ -73,8 +72,12 @@ class SensorOnlyModel(nn.Module):
 
     def forward(self, views: Mapping[str, Tensor]) -> dict[str, dict[str, Tensor]]:
         encoded = self.encode_views(views)
-        sensor_input = torch.cat([encoded[name] for name in VIEW_DIMS], dim=-1)
-        sensor = {name: head(sensor_input) for name, head in self.sensor_heads.items()}
+        sensor = {
+            "rms": self.sensor_heads["rms"](encoded["mel"]),
+            "brightness": self.sensor_heads["brightness"](encoded["mfcc"]),
+            "mode": self.sensor_heads["mode"](encoded["chroma"]),
+            "key": self.sensor_heads["key"](encoded["chroma"]),
+        }
         downstream = {name: self.view_dropout(value) for name, value in encoded.items()}
         return {"sensor": sensor, "encoded_views": encoded, "downstream_views": downstream}
 
