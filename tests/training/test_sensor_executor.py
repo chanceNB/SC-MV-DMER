@@ -46,3 +46,16 @@ def test_key_contract_pools_nine_segments_and_excludes_short_segment():
     term = SensorLossContract.key_ce(logits, targets, mask)
     assert term.denominator == 8
     assert term.eligibility
+
+
+def test_formal_executor_dry_run_cannot_start_training():
+    from sc_mv_dmer.training.sensor_executor import SensorFormalExecutor, TrainingExecutionNotAuthorized
+
+    executor = SensorFormalExecutor()
+    assert executor.dry_run()["training_started"] is False
+    try:
+        executor.fit()
+    except TrainingExecutionNotAuthorized:
+        pass
+    else:
+        raise AssertionError("fit must be explicitly blocked by the dry-run executor facade")

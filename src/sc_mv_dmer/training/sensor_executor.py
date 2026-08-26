@@ -79,6 +79,47 @@ class SensorOnlyModel(nn.Module):
         return {"sensor": sensor, "encoded_views": encoded, "downstream_views": downstream}
 
 
+class TrainingExecutionNotAuthorized(RuntimeError):
+    """Raised when a caller attempts to start training from the contract facade."""
+
+
+@dataclass(frozen=True)
+class SensorFormalExecutor:
+    """Execution facade whose default and only tested operation is planning.
+
+    Actual optimization is intentionally a separate authorized operation. This
+    prevents a pre-flight/dry-run command from silently creating checkpoints.
+    """
+
+    optimization_train_songs: int = 896
+    validation_songs: int = 99
+    test_songs: int = 58
+    validation_metric: str = "validation CE"
+    cadence: str = "every epoch"
+    patience: int = 10
+    min_delta: float = 1e-4
+    seed_set: str = "SC-MV-DMER-FORMAL-S5/v1"
+
+    def dry_run(self) -> dict[str, object]:
+        return {
+            "optimization_train": self.optimization_train_songs,
+            "validation": self.validation_songs,
+            "test": self.test_songs,
+            "selection_metric": self.validation_metric,
+            "cadence": self.cadence,
+            "patience": self.patience,
+            "min_delta": self.min_delta,
+            "seed_set": self.seed_set,
+            "training_started": False,
+            "checkpoint_published": False,
+        }
+
+    def fit(self, *args: object, **kwargs: object) -> None:
+        raise TrainingExecutionNotAuthorized(
+            "RG-03 training is not authorized by the contract-validation command"
+        )
+
+
 @dataclass(frozen=True)
 class LossTerm:
     numerator: Tensor

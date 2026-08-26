@@ -113,7 +113,7 @@ def run_preflight(repo_root: Path, *, artifact_root: Path | None = None) -> Pref
     checks["test_isolation"] = checks["normalization_baseline"] and checks["pdmer_masking"] and validation.get("population", {}).get("test_long_songs") == 58
     blockers = sorted(set(blockers))
     verdict = "PASS" if not blockers and all(checks.values()) else "BLOCKED"
-    return PreflightReport(verdict=verdict, checks=checks, blockers=tuple(blockers), provenance={"repo_root": str(repo_root), "head": status.returncode == 0 and subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_root, text=True).strip() or None, "artifact_root_config": "SC_MV_DMER_ARTIFACT_ROOT", "absolute_paths_serialized": False, "dataset_manifest": DATASET_MANIFEST_SHA256, "feature_cache_manifest": FEATURE_CACHE_SHA256, "pseudo_label_cache_manifest": PSEUDO_CACHE_SHA256, "validation_contract": VALIDATION_CONTRACT_ID})
+    return PreflightReport(verdict=verdict, checks=checks, blockers=tuple(blockers), provenance={"repo_root_logical": "<runtime-workspace>", "head": status.returncode == 0 and subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_root, text=True).strip() or None, "artifact_root_config": "SC_MV_DMER_ARTIFACT_ROOT", "absolute_paths_serialized": False, "dataset_manifest": DATASET_MANIFEST_SHA256, "feature_cache_manifest": FEATURE_CACHE_SHA256, "pseudo_label_cache_manifest": PSEUDO_CACHE_SHA256, "validation_contract": VALIDATION_CONTRACT_ID})
 
 
 def dry_run(repo_root: Path, *, artifact_root: Path | None = None) -> dict[str, Any]:
