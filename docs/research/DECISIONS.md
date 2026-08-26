@@ -738,3 +738,35 @@ append-only Decision，并使受影响的 manifest/evidence/run 按 provenance �
 ### 变更控制
 
 本决定不授权训练、checkpoint、paper aggregation 或 validation 成员推断。任何 validation policy、短音频政策、feature cache 语义或模型/损失架构变化都必须另建 append-only Decision/version，并使受影响 evidence/run 按 provenance 失效或 supersede。
+
+## DEC-0031：冻结 DEAM-PDMER-CLEAN-v3 Song Validation Contract
+
+- 日期：2026-08-26
+- 状态：Accepted / Frozen
+- 决策类型：User-authorized Validation Governance Decision
+- 适用范围：`DEAM-PDMER-CLEAN-v3` 的 validation membership、Sensor/No-LLM/formal primary optimization provenance、PDMER role masking、train-only target contracts
+- contract：`DEAM-PDMER-CLEAN-v3-SONG-VALIDATION/v1`
+
+### 决定
+
+1. v3 dataset manifest、feature cache、pseudo-label cache、旧 primary split 和旧 RG-02 evidence 保持不可变。canonical ranking 使用 manifest 中真实 stable `dataset_id` `dataset_480f00e52c71f8a4f7c2681f2a59d3b11c105d915e3faf508bd06970ee846dae`；`DEAM-PDMER-CLEAN-v3` 仅作为 manifest/version 标识。v3 manifest internal SHA-256 必须绑定为 `d4c539945c5477e5ca325e9535f6f100918341a9292460d533377c493ee8473d`。
+2. 仅对 995 条 retained exact-45s primary song 计算 canonical UTF-8、固定 key 排序、SHA-256 rank；digest 升序、digest 相同按 `song_id` 升序。固定 membership 为 896 optimization-train song 与 99 validation song；58 首 long song 为 test-only。validation 不参与训练。
+3. Sensor、No-LLM 和 formal primary 复用同一 896/99 membership。若未来执行 `FULL-995-REFIT`，必须是独立 provenance run，不使用 validation 选模或 early stopping。
+4. PDMER 采用 role-aware episode masking：test-song episodes、test targets 和 test-derived statistics 永不进入 train/validation；WorkerId identity 可跨 train/validation/test 重复；test 中出现 WorkerId 不得删除其 train-side song episode。evidence 必须保存跨角色重复 WorkerId、role song/assignment counts、有效 episode 数和 mask 结果。
+5. RMS/Energy、Brightness、Mode normalization 与 constant baseline 仅由 896 optimization-train 的 finite targets 拟合，`epsilon_std=1e-6`，metric 使用 inverse-transformed raw space。Energy canonical target ID 固定为 `DEAM-PDMER-CLEAN-v3/PSEUDO_LABEL/RMS`，严格对应 pseudo-label cache `targets.rms` 字段。
+6. Mode 绑定 `MEP-CCC2-S5-3R+`，使用 FP64 pooled valid-frame moments、finite pair filtering 和固定 invalid reason codes；RG-03 criterion 仍为严格 `CCC > 0.7`。
+7. Key 固定 12 类顺序 `C,C#,D,D#,E,F,F#,G,G#,A,A#,B`。每个 5 秒 segment 含 10 帧，finite valid frames `>=5/10` 才有效；unknown、missing、tie 或不足 5 帧均 invalid，并保存 reason code。invalid segment 不进入 CE、prior 或 checkpoint selection。模型与 prior 使用相同 mask、segment 和 pooled valid-segment mean CE reduction；zero-valid、invalid-batch 和 non-finite 行为必须按 contract 记录。
+8. 所有 validation manifest/evidence 必须保存 logical source path、manifest/cache hash、contract version、artifact checksum、fit-split fingerprint 和 provenance；不得写入运行时绝对数据路径。
+
+### Registered artifacts
+
+- validation manifest：`manifests/splits/deam-pdmer-clean-v3-validation-v1.json`
+- deterministic ranking：`evidence/data/deam-pdmer-clean-v3-validation-ranking-v1.json`
+- PDMER masking：`evidence/data/deam-pdmer-clean-v3-pdmer-role-masking-v1.json`
+- normalization/baseline：`evidence/data/deam-pdmer-clean-v3-normalization-baseline-v1.json`
+- Mode prerequisite：`evidence/data/deam-pdmer-clean-v3-mode-ccc-prerequisite-v1.json`
+- Key contract/prior：`evidence/data/deam-pdmer-clean-v3-key-contract-v1.json`
+
+### 变更控制
+
+本决定不授权 RG-03 formal evaluation、Sensor/No-LLM/formal training、checkpoint 或 paper aggregation。任何 membership、population、WorkerId masking、normalization、Mode、Key 或 CE 规则变化必须创建新的 append-only Decision/contract/version，并使受影响 evidence/run 按 provenance 失效或 supersede。
