@@ -269,9 +269,10 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
-    parser.add_argument("--data-root", type=Path, default=Path(os.environ.get(DATA_ROOT_CONFIG_KEY, "")))
+    configured_root = os.environ.get(DATA_ROOT_CONFIG_KEY)
+    parser.add_argument("--data-root", type=Path, default=Path(configured_root) if configured_root else None)
     args = parser.parse_args()
-    if not str(args.data_root):
+    if args.data_root is None:
         raise SystemExit(f"{DATA_ROOT_CONFIG_KEY} is required")
     print(json.dumps(build(args), ensure_ascii=False, indent=2))
     return 0
