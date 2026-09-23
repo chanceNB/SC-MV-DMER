@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import math
 import random
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -38,10 +39,33 @@ def load_rows(manifest_path: Path, split_path: Path, targets_path: Path,
     verify_split(manifest, split)
     if file_sha256(targets_path) != manifest["artifacts"]["dmer_targets"]["file_sha256"]:
         raise ValueError("target artifact checksum mismatch")
-    target_records = [json.loads(line) for line in targets_path.read_text(encoding="utf-8").splitlines() if line]
+    roles = {r["song_id"]: r["split"] for r in split["records"]}
+    if any(role not in ("train", "validation", "test", "long_test") for role in roles.values()):
+        raise ValueError("unknown split role")
+    # Test targets remain in the immutable full-population artifact so its
+    # manifest checksum can be verified, but do not JSON-decode their labels.
+    # The split manifest supplies the only field needed to skip those records.
+    song_id_pattern = re.compile(r'"song_id"\s*:\s*"([^"]+)"')
+    target_records = []
+    with Path(targets_path).open("r", encoding="utf-8") as source:
+        for line in source:
+            if not line.strip():
+                continue
+            match = song_id_pattern.search(line)
+            if match is None:
+                raise ValueError("target row is missing song_id")
+            song_id = match.group(1)
+            if song_id not in roles:
+                raise ValueError("target row is not registered in split manifest")
+            if roles[song_id] in ("train", "validation"):
+                record = json.loads(line)
+                if record.get("song_id") != song_id:
+                    raise ValueError("target row song_id parsing mismatch")
+                target_records.append(record)
     targets = {r["song_id"]: r for r in target_records}
-    if len(target_records) != 1802 or len(targets) != 1802 or set(targets) != {r["song_id"] for r in manifest["records"]}:
-        raise ValueError("target population mismatch")
+    expected_target_ids = {song_id for song_id, role in roles.items() if role in ("train", "validation")}
+    if len(target_records) != len(expected_target_ids) or len(targets) != len(expected_target_ids) or set(targets) != expected_target_ids:
+        raise ValueError("train/validation target population mismatch")
     features = {}
     if cache_path is not None:
         cache = _json(cache_path)
@@ -51,16 +75,24 @@ def load_rows(manifest_path: Path, split_path: Path, targets_path: Path,
         unsigned = {k: v for k, v in cache.items() if k != "manifest_sha256"}
         if cache.get("manifest_sha256") != sha256_canonical(unsigned):
             raise ValueError("feature manifest checksum mismatch")
+        requested_windows = {window["window_id"] for record in manifest["records"]
+                             if roles[record["song_id"]] in ("train", "validation")
+                             for window in make_windows(record)}
         for row in cache["windows"]:
+            if row["window_id"] not in requested_windows:
+                continue
             path = (cache_path.parent / row["path"]).resolve()
             if not path.is_relative_to(cache_path.parent.resolve()):
                 raise ValueError("feature path escapes registered cache root")
             if file_sha256(path) != row["sha256"]:
                 raise ValueError(f"feature payload checksum mismatch: {row['window_id']}")
             features[row["window_id"]] = str(path)
-    roles = {r["song_id"]: r["split"] for r in split["records"]}
+        if set(features) != requested_windows:
+            raise ValueError("train/validation feature population mismatch")
     rows = []
     for record in manifest["records"]:
+        if roles[record["song_id"]] not in ("train", "validation"):
+            continue
         for window in make_windows(record):
             target, mask = align_targets(targets[record["song_id"]], window)
             row = dict(window, split=roles[record["song_id"]], target=target, mask=mask)
@@ -214,7 +246,9 @@ def run_experiment(*, manifest_path: Path, split_path: Path, targets_path: Path,
             "mode": mode, "paper_eligible": mode == "formal", "evaluation_role": "validation",
             "loss": "song-dimension-equal MSE + 0.05 adjacent smoothness + optional 0.01 normalized entropy floor(0.5)",
             "selection": "maximum validation macro (CCC_V+CCC_A)/2; earliest exact tie",
-            "test_accessed_for_evaluation": False, "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
+            "loaded_split_roles": ["train", "validation"], "test_accessed_for_evaluation": False,
+            "test_features_opened": False, "test_targets_decoded": False,
+            "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
             "git_status": git_status, "code_sha256": file_sha256(Path(__file__))}
     _write(output / "run_spec.json", spec)
     started = time.monotonic()
@@ -276,8 +310,23 @@ def run_experiment(*, manifest_path: Path, split_path: Path, targets_path: Path,
                  "elapsed_seconds": time.monotonic() - started, "paper_eligible": spec["paper_eligible"],
                  "test_evaluated": False, "metrics_file_sha256": file_sha256(output / "validation_metrics.json")}
         _write(output / "final.json", final)
+        file_hashes = {path.name: file_sha256(path) for path in sorted(output.iterdir())
+                       if path.is_file() and path.name != "run_manifest.json"}
+        _write(output / "run_manifest.json", {
+            "schema_version": "1.0", "status": final["status"], "run_spec": spec,
+            "population": {"dataset_songs_registered": len(manifest["records"]),
+                           "train_songs_loaded": len(train), "validation_songs_loaded": len(validation),
+                           "test_songs_loaded": 0, "long_test_songs_loaded": 0},
+            "access_policy": {"loaded_split_roles": ["train", "validation"],
+                              "test_targets_decoded": False, "test_features_opened": False,
+                              "test_evaluated": False},
+            "outputs_sha256": file_hashes})
         return final
     except BaseException as exc:
-        _write(output / "final.json", {"status": "INTERRUPTED" if isinstance(exc, KeyboardInterrupt) else "FAILED",
-                                     "error": str(exc), "elapsed_seconds": time.monotonic() - started})
+        failed = {"status": "INTERRUPTED" if isinstance(exc, KeyboardInterrupt) else "FAILED",
+                  "error": str(exc), "elapsed_seconds": time.monotonic() - started}
+        _write(output / "final.json", failed)
+        _write(output / "run_manifest.json", {"schema_version": "1.0", **failed, "run_spec": spec,
+                                                "loaded_split_roles": ["train", "validation"],
+                                                "test_accessed_for_evaluation": False})
         raise

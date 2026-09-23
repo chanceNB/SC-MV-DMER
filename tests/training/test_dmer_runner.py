@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
 import torch
+import json
+from pathlib import Path
 
+import sc_mv_dmer.training.dmer_runner as dmer_runner
 from sc_mv_dmer.training.dmer_runner import WindowDataset, stitch_song_predictions, train_epoch
 from sc_mv_dmer.training.dmer_acoustic import TrainNormalizer
 
@@ -80,3 +83,56 @@ def test_normalized_transition_entropy_is_not_normalized_a_second_time():
              "target":torch.zeros(1,60,2),"mask":torch.ones(1,60,2,dtype=torch.bool)}
     loss = train_epoch(model,[batch],torch.optim.SGD(model.parameters(),lr=.1),torch.device("cpu"))
     assert loss == pytest.approx(0.)
+
+
+def test_load_rows_does_not_decode_test_targets_or_touch_test_features(tmp_path, monkeypatch):
+    manifest_path = tmp_path / "dataset.json"
+    split_path = tmp_path / "split.json"
+    targets_path = tmp_path / "targets.jsonl"
+    cache_path = tmp_path / "cache.json"
+    records = [{"song_id": name} for name in ("train-song", "validation-song", "test-song", "long-song")]
+    manifest = {"records": records, "artifacts": {"dmer_targets": {"file_sha256": "target-hash"}}}
+    split = {"records": [{"song_id": "train-song", "split": "train"},
+                         {"song_id": "validation-song", "split": "validation"},
+                         {"song_id": "test-song", "split": "test"},
+                         {"song_id": "long-song", "split": "long_test"}]}
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    split_path.write_text(json.dumps(split), encoding="utf-8")
+    train_target = {"song_id": "train-song", "values": [1]}
+    validation_target = {"song_id": "validation-song", "values": [2]}
+    targets_path.write_text(
+        json.dumps(train_target) + "\n" + json.dumps(validation_target) +
+        '\n{"song_id":"test-song","values": THIS_IS_NOT_JSON}\n' +
+        '{"song_id":"long-song","values": THIS_IS_NOT_JSON}\n', encoding="utf-8")
+    train_feature, validation_feature = tmp_path / "train.npz", tmp_path / "validation.npz"
+    train_feature.write_bytes(b"train")
+    validation_feature.write_bytes(b"validation")
+    cache = {"dataset_manifest_sha256": "dataset-file-hash", "manifest_sha256": "cache-hash",
+             "windows": [{"window_id": name, "path": filename, "sha256": digest}
+                         for name, filename, digest in (("train-song", "train.npz", "train-hash"),
+                                                        ("validation-song", "validation.npz", "validation-hash"),
+                                                        ("test-song", "test-does-not-exist.npz", "test-hash"),
+                                                        ("long-song", "long-does-not-exist.npz", "long-hash"))]}
+    cache_path.write_text(json.dumps(cache), encoding="utf-8")
+
+    monkeypatch.setattr(dmer_runner, "verify_split", lambda *_: None)
+    monkeypatch.setattr(dmer_runner, "validate_feature_binding", lambda *_: None)
+    monkeypatch.setattr(dmer_runner, "sha256_canonical", lambda _: "cache-hash")
+    monkeypatch.setattr(dmer_runner, "make_windows", lambda record: [{
+        "song_id": record["song_id"], "window_id": record["song_id"], "output_time_ms": list(range(60))}])
+    monkeypatch.setattr(dmer_runner, "align_targets", lambda *_: (np.zeros((60, 2)), np.ones((60, 2), dtype=bool)))
+    touched = []
+
+    def fake_hash(path):
+        path = Path(path)
+        touched.append(path.name)
+        if path.name in ("test-does-not-exist.npz", "long-does-not-exist.npz"):
+            raise AssertionError("test/long-test feature was touched")
+        return {"targets.jsonl": "target-hash", "dataset.json": "dataset-file-hash",
+                "train.npz": "train-hash", "validation.npz": "validation-hash"}.get(path.name, "unused")
+
+    monkeypatch.setattr(dmer_runner, "file_sha256", fake_hash)
+    _, _, rows = dmer_runner.load_rows(manifest_path, split_path, targets_path, cache_path)
+    assert [row["song_id"] for row in rows] == ["train-song", "validation-song"]
+    assert "test-does-not-exist.npz" not in touched
+    assert "long-does-not-exist.npz" not in touched
