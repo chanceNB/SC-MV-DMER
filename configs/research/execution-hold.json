@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "status": "PAUSED",
+  "scope": "LEGACY_RG03_AND_DEAM_PDMER_CLEAN_V3",
+  "current_revision_decision": "DEC-0033",
+  "new_acoustic_entrypoint": "scripts/run_dmer_acoustic.py",
+  "new_acoustic_policy": "INDEPENDENT_FULL_POPULATION_PREFLIGHT_NO_SENSOR_GATE",
+  "reason": "DMER_FULL_POPULATION_REBUILD",
+  "decision": "DEC-0032",
+  "blocked_dataset_manifest": "DEAM-PDMER-CLEAN-v3",
+  "historical_evidence_disposition": "PRESERVE_UNCHANGED_NOT_ELIGIBLE_FOR_FULL_DMER_CLAIMS",
+  "replacement_dataset_manifest": "DEAM-DMER-FULL-v1",
+  "resume_requires": ["USER_CONFIRMED_SPLIT_PROTOCOL", "FULL_POPULATION_FEATURE_AND_LABEL_BINDING", "NEW_FORMAL_PREFLIGHT"]
+}

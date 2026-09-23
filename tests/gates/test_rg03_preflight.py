@@ -8,7 +8,7 @@ def test_rg03_dry_run_fails_closed_without_immutable_payload_root():
     repo = Path(__file__).parents[2]
     report = run_preflight(repo)
     assert report.verdict == "BLOCKED"
-    assert "MISSING_IMMUTABLE_EXECUTION_ARTIFACT" in report.blockers
+    assert "FORMAL_EXECUTION_PAUSED_DMER_FULL_POPULATION_REBUILD" in report.blockers
     assert not report.provenance["absolute_paths_serialized"]
 
 

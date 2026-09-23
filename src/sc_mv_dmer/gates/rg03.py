@@ -74,6 +74,15 @@ def _cache_payloads_available(repo_root: Path, artifact_root: Path | None, cache
 
 def run_preflight(repo_root: Path, *, artifact_root: Path | None = None) -> PreflightReport:
     repo_root = Path(repo_root).resolve()
+    hold_path = repo_root / "configs/research/execution-hold.json"
+    if hold_path.exists():
+        hold = json.loads(hold_path.read_text(encoding="utf-8"))
+        if hold.get("status") == "PAUSED":
+            return PreflightReport(
+                verdict="BLOCKED", checks={"formal_execution_not_paused": False},
+                blockers=("FORMAL_EXECUTION_PAUSED_DMER_FULL_POPULATION_REBUILD",),
+                provenance={"hold": hold, "absolute_paths_serialized": False},
+            )
     checks: dict[str, bool] = {}
     blockers: list[str] = []
     manifest = _load(repo_root, "manifests/datasets/deam-pdmer-clean-v3.json")

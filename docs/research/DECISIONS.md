@@ -770,3 +770,36 @@ append-only Decision，并使受影响的 manifest/evidence/run 按 provenance �
 ### 变更控制
 
 本决定不授权 RG-03 formal evaluation、Sensor/No-LLM/formal training、checkpoint 或 paper aggregation。任何 membership、population、WorkerId masking、normalization、Mode、Key 或 CE 规则变化必须创建新的 append-only Decision/contract/version，并使受影响 evidence/run 按 provenance 失效或 supersede。
+
+## DEC-0032：恢复普通 DMER 全量样本并暂停旧版正式实验
+
+- 日期：2026-09-23
+- 状态：Accepted / 用户当前明确请求
+- 范围：普通 DMER 数据总体、标签重建与后续实验暂停；不改变历史文件或结果。
+
+用户要求：重新处理数据，暂停沿用 995 首版本推进正式实验，按普通 DMER 口径保留全部 1,744 段短音频及 58 首完整歌曲。
+
+1. 建立 DEAM-DMER-FULL-v1，共 1,802 首，排除 0 首。缺少 WorkerId 不影响普通 DMER 均值标签；实际不足 45 秒也不能据此排除歌曲。
+2. 原始音频和标注只读；不补造标签。保留 >=15 秒的原时间点并对有限标注行求均值，完整歌曲不截为 45 秒。保存每点人数和掩码。
+3. 暂停 DEAM-PDMER-CLEAN-v3 对后续普通 DMER 正式实验的使用。保留其已有数据、cache、Gate 和模型不变；历史结果不能冒充全量普通 DMER 实验。
+4. 新版不继承旧 896/99 划分、归一化或 feature/pseudo-label 绑定。研究方案 80/10/10 与论文 1744/58 的划分差异仍待用户确认；不能自动选择。
+5. 发布全量数据清单和标签不构成训练放行。新特征绑定、用户确认划分和新的 formal preflight 完成前保持 PAUSED。
+
+登记：manifests/datasets/deam-dmer-full-v1.json；reports/data/deam-dmer-full-v1-audit.json；configs/research/execution-hold.json。
+
+## DEC-0033：实施普通DMER全量架构修订
+
+- 日期：2026-09-23
+- 状态：Accepted / 用户明确逐项选择后，完整引用计划并要求 IMPLEMENT THIS PLAN。
+- 当前完整执行说明：DMER_REVISION_IMPLEMENTATION.md；机器配置：configs/research/dmer-v2.json。
+
+1. 冻结全量1744短片的1395/174/175歌曲划分，58长曲为long_test；沿用SHA256确定性排名语义，绑定DEAM-DMER-FULL-v1。
+2. 输入90时刻与输出60时刻分开；短尾内存补齐、长曲45秒窗30秒步长；每维标签mask保留全部有效原始点。
+3. 主指标改为每歌等权CCC/PCC/RMSE，pooled补充；validation平均双维CCC选模，test不参与。训练五种子不改变数据划分。
+4. 保留四视图、TimesNet、共享A/pi和Qwen7B双头；修正概率递推为乘积归一化；状态对齐为研究假设。
+5. 首版两个头分别监督，解析一致性仅评估，不进入loss或Kendall权重。7B两阶段各5轮，lr1e-4/3e-5；允许验证选模并保留末轮。
+6. 声学对照与不使用事件的无LLM原型不依赖Sensor gate；事件解释实验仍需通过Sensor与人工CoT质量门槛。
+7. 当前授权包括保存改动、协议/代码实施、全量特征重建、本机声学开发与验证；付费资源、正式外部Qwen资源、人工审核不得伪造。
+8. 旧995首入口保持暂停，旧证据仅历史。所有旧冻结条款与本决定冲突处由本决定取代，不修改历史结果。
+
+实施默认：声学开发AdamW lr3e-4、weight_decay1e-4、至多50轮、validation耐心10，MSE按歌按维等权；smooth0.05，state0.01与归一化熵下限0.5。此为预先记录工程选择，非参考论文声称。

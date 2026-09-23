@@ -42,6 +42,7 @@ configs/local/
 artifacts/
 evidence/runtime/
 reports/runtime/
+reports/data/feature-materialize-decoded-*.log
 
 # Packaging/build outputs
 build/

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 import sys
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -179,10 +180,19 @@ def test_corrected_qualification_records_supersession_without_overwrite(tmp_path
 
 def test_qualification_does_not_import_or_execute_model_code(tmp_path: Path) -> None:
     """Preflight must remain an artifact reader, not a MERT execution entrypoint."""
-
-    qualification(tmp_path, status=mert_status(verified=False))
-
-    assert "torch" not in sys.modules
+    # Model tests legitimately import torch during collection. A fresh process
+    # verifies this boundary without depending on unrelated collection order.
+    code = """
+import runpy, sys
+from pathlib import Path
+namespace = runpy.run_path(sys.argv[1])
+assert 'torch' not in sys.modules
+namespace['qualification'](Path(sys.argv[2]), status=namespace['mert_status'](verified=False))
+assert 'torch' not in sys.modules
+"""
+    result = subprocess.run([sys.executable, "-c", code, str(Path(__file__).resolve()), str(tmp_path)],
+                            cwd=REPOSITORY_ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_qualify_step_cli_reads_artifacts_only_and_writes_terminal_bundle(tmp_path: Path) -> None:

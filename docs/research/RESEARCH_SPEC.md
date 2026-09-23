@@ -1,5 +1,9 @@
 # SC-MV-DMER Research Specification
 
+> **当前执行依据（2026-09-23，DEC-0033）**：用户已批准并要求实施[普通 DMER 架构修订计划](DMER_REVISION_IMPLEMENTATION.md)，机器配置为 `configs/research/dmer-v2.json`。全量1744＋58首，1395/174/175＋58长曲测试；90输入／60输出；长曲45秒窗30秒步长；歌曲等权主指标；解析一致性仅评估；Sensor门槛仅阻塞依赖事件的LLM。下方旧冻结条款与本次决定冲突的部分仅供历史追溯，不得覆盖新决定。旧995首训练继续PAUSED；新声学开发按新数据绑定独立检查。
+
+> 当前执行状态更新（2026-09-23，DEC-0032）：按用户要求改为普通 DMER 全量 1,744 段短音频 + 58 首完整歌曲。995 首版本后续正式实验已暂停。`DEAM-DMER-FULL-v1` 已重建标签；实验划分待用户选择，尚未绑定新特征。下方既有冻结条款须结合本次更新阅读，不得据历史状态继续旧版训练。详见 `DEAM_DMER_FULL_STATUS.md`。
+
 > 状态：Foundation 三批研究语义已获用户批准并冻结；当前 Closure Audit 为 `CONDITIONAL_PASS_EXECUTION_BLOCKED`。`FORMAL_EXECUTION_READY=NO`；M0 为 `READY_TO_CLOSE`，等待可机器核验的人类批准 provenance transcription。本文档是当前完整的人类可读研究语义 Source of Truth。
 
 ## 1. Source of Truth

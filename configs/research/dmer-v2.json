@@ -1,0 +1,19 @@
+{
+  "schema_version": "2.0",
+  "decision": "DEC-0033",
+  "task": "ORDINARY_DMER",
+  "active_dataset_manifest": "manifests/datasets/deam-dmer-full-v1.json",
+  "active_split_manifest": "manifests/splits/deam-dmer-full-v1-primary-song-80-10-10-v1.json",
+  "feature_version": "deam-dmer-features-v2",
+  "feature_cache_root": "E:/数据集/_pdmer_compat/processed/deam-dmer-features-v2-decoded",
+  "decoded_audio_audit": "reports/data/deam-dmer-full-v1-decoded-audio-audit.json",
+  "decoded_audio_support_policy": "DECODED_PCM_CANONICAL_WINDOWS/v1",
+  "population": {"short_clips": 1744, "full_songs": 58, "excluded": 0},
+  "split_counts": {"train": 1395, "validation": 174, "test": 175, "long_test": 58},
+  "time": {"input_ms": 45000, "input_steps": 90, "output_first_ms": 15000, "output_steps": 60, "step_ms": 500, "long_window_stride_ms": 30000},
+  "metrics": {"primary": "song_equal", "supplementary": "pooled", "dimensions": ["valence", "arousal"], "names": ["ccc", "pcc", "rmse"], "selection": "validation_macro_mean_ccc"},
+  "seeds": [52826381, 128866372, 1616929435, 1871035633, 1460830465],
+  "acoustic": {"epochs": 50, "patience": 10, "lr": 0.0003, "weight_decay": 0.0001, "hidden_dim": 256, "state_count": 8, "sensor_gate_required": false},
+  "qwen": {"model": "Qwen/Qwen2.5-7B-Instruct", "stage_epochs": [5, 5], "stage_lr": [0.0001, 0.00003], "lora_rank": 16, "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj"], "quantization": "nf4-double-bf16", "consistency": "EVALUATION_ONLY", "think_token_limit": 300, "answer_budget": "QUALIFY_COMPLETE_60_PAIRS_WITH_ACTUAL_TOKENIZER", "sensor_gate_required": true, "human_cot_review_required": true, "external_resource_confirmation_required": true},
+  "legacy": {"dataset_manifest": "DEAM-PDMER-CLEAN-v3", "execution": "BLOCKED", "evidence": "HISTORICAL_ONLY"}
+}

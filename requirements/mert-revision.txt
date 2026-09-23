@@ -1,0 +1,8 @@
+# Install into the existing MERT-compatible runtime, not the Qwen runtime.
+numpy==2.2.6
+scipy==1.15.3
+librosa==0.11.0
+soundfile==0.14.0
+soxr==1.1.0
+transformers==4.24.0
+torch==2.11.0

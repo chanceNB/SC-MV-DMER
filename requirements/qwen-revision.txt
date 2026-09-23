@@ -1,0 +1,8 @@
+# Separate environment; select the CUDA build of torch appropriate for the host.
+torch==2.11.0
+transformers==4.51.3
+tokenizers==0.21.4
+safetensors==0.5.3
+peft==0.15.2
+accelerate==1.6.0
+bitsandbytes==0.45.5

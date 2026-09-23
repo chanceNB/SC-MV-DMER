@@ -1,0 +1,52 @@
+{
+  "repository": "https://github.com/Littleor/Personalized-DMER",
+  "commit": "20b12ea1dd8a41ba0e3072a15a19f88d8fa28496",
+  "license": "Apache-2.0",
+  "files": {
+    "feature_fusion.py": {
+      "upstream_path": "models/layer/feature_fusion.py",
+      "upstream_sha256": "a5664bc7f281b5cddb8a3b69ec496fd1d27bb6644c3ef5290b4641c48c8f0cc8",
+      "vendored_sha256": "76b839115c0008e8f019077caba6200d8a522cc6af73b005e6baedb86c0c2891"
+    },
+    "multi_scale_attention.py": {
+      "upstream_path": "models/layer/multi_scale_attention.py",
+      "upstream_sha256": "35bc1e7156fa31a22f63aab1f5c691db8b7b845277059728e035e9122c402d82",
+      "vendored_sha256": "99ee25a56599853d3d50f70fa414c86170f1b8547e75b623623c498573cd8e62"
+    },
+    "predicton.py": {
+      "upstream_path": "models/layer/predicton.py",
+      "upstream_sha256": "3cecc26d09ff6e0e23a098c95aaeead359098b44ef7d0aa3fc8f27e0ec16d074",
+      "vendored_sha256": "50879fefae5fa568ed025978c6c5d33a1d8ffa2513a1a88e00fcd8777fe13fe8"
+    },
+    "spectrogram_feature_extractor.py": {
+      "upstream_path": "models/layer/spectrogram_feature_extractor.py",
+      "upstream_sha256": "282e46d3bb159bccd0217d1f97e57b7a97ad13d9280ea29174d2802da3122516",
+      "vendored_sha256": "9bf981b31d359a9682a701bd20491e37e0a416eb86ddce4db66cdced8c49aa48"
+    },
+    "transformer_encoder.py": {
+      "upstream_path": "models/layer/transformer_encoder.py",
+      "upstream_sha256": "157eac49926af7219c9ad72acb6aaa52ae026ed3048b80b79d6b817c39c04c89",
+      "vendored_sha256": "90a36d6894eb19b916df605f1220b5ad18d7346eead4a399ef31566da4665f8d"
+    },
+    "attention.py": {
+      "upstream_path": "models/layer/attention.py",
+      "upstream_sha256": "fb8f634bf6871f4b515691cda29c259148c94f6d7370f696764b65ba918ade1f",
+      "vendored_sha256": "5397860e41e11237e68017201f28b3ba8dd9a9b859bfa239d7de0e0b508c3a28"
+    },
+    "mask.py": {
+      "upstream_path": "utils/mask.py",
+      "upstream_sha256": "c3044e71d0c8ec19d48eb5a645a7cfd60e26011e32c0fc68787412301ccd1cb3",
+      "vendored_sha256": "b15cf65d32c6a40ca1a940e5b96d8cac90ad64db81bee3f25e3b4020a6f88cc4"
+    },
+    "LICENSE": {
+      "upstream_path": "LICENSE",
+      "upstream_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "vendored_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  },
+  "changes": [
+    "Import paths made package relative; removed sys.path mutations and demo-only logger dependency.",
+    "Model arithmetic remains unchanged in vendored layers. Wrapper supplies source PDMER assembly, VA reordering, explicit eval behavior and valid-tail sequence handling.",
+    "Removed unused PIL.Image import from mask.py; no image functions are called."
+  ]
+}

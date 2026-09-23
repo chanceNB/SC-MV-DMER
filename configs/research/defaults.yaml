@@ -1,4 +1,6 @@
-# This file is the machine-executable mapping of docs/research/RESEARCH_SPEC.md.
+# HISTORICAL CONFIGURATION ONLY: superseded by configs/research/dmer-v2.json.
+# Existing legacy entrypoints remain PAUSED; do not use this file for full DMER.
+# This file was the machine-executable mapping of docs/research/RESEARCH_SPEC.md.
 # It is not an independent source of research truth. Changes require the governed
 # DECISIONS.md -> RESEARCH_SPEC.md -> config/schema version-bump sequence.
 config_schema_version: "1.0"
