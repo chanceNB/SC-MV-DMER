@@ -43,6 +43,7 @@
 - 协议15项新增测试通过；全部标签点覆盖审计PASS。
 - Qwen双头用隔离transformers4.51.3真实tiny Qwen2验证，27项模型测试通过；不等价于7B训练完成。
 - 常数基线只拟合1395训练歌曲，174验证歌曲macro CCC_V/A=0/0，RMSE_V=0.22164649、RMSE_A=0.23734351。run为development、paper_eligible=false。
+- 声学小规模联调已完成（seed `52826381`、2 epoch、development、只使用train/validation）：CRNN 验证选择分数 `0.06775616`，MERT 直接回归 `0.01655119`，concat 四视图 `0.04600813`；三个 run 均为 `SUCCEEDED`，验证预测均为174首，未读取test，`paper_eligible=false`。运行产物位于 `E:/SC-MV-DMER-immutable/dmer-v2-development/smoke-*`，这些数值只用于链路验收，不作为正式论文结果。
 - 新特征全量运行完成：2,197/2,197窗口、1,802/1,802首，manifest 与每个窗口哈希校验通过；源音频与标签没有被修改。
 - 解码审计覆盖1802首，发现201首登记时长与实际PCM时长不同，但监督点越界数为0；协议仍使用登记时间轴，特征输入 `audio_mask/audio_coverage` 使用实际解码PCM。旧中断缓存已移至 `deam-dmer-features-v2-decoded-aborted-20260923`，不参与训练。
 - 全部2,197个训练/验证/测试窗口的实际掩码与目标掩码复核通过；其中51个窗口比协议登记掩码更严格，但没有遮掉任何有效标签。
